@@ -1,10 +1,14 @@
 # Apply-LINDA-BN-on-predicting-next-event
 
 
-- [ ] Create pytorch dataset
-- [ ] Create pytorch data_loader
-- [ ] Create pytorch lstm
-- [ ] Create trainer (TrainingController)
+- [x] Create pytorch dataset
+- [x] Create pytorch data_loader
+- [x] Create pytorch lstm
+- [x] Create trainer (TrainingController)
+- [ ] Add cross validation
+- [ ] Read papers
+- [ ] Read LINDA-BN implementation
+- [ ] Apply LINDA-BN
 
 
 [[Predicting Next]](https://www.kdnuggets.com/2020/07/pytorch-lstm-text-generation-tutorial.html)
