@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Iterable, Tuple, Union
 from pandas.core.frame import DataFrame
 import torch
 import pandas as pd
@@ -8,6 +8,7 @@ from datetime import timedelta
 import numpy as np
 from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence, pack_sequence, pad_packed_sequence
 import torch.nn.functional as F
+from Utils.Constants import Constants
 
 
 class BPI2012Dataset(Dataset):
@@ -24,8 +25,8 @@ class BPI2012Dataset(Dataset):
                                                for trace in log for event in trace])
         df = pd.DataFrame(flattern_log)
         df["name_and_transition"] = df["concept:name"] + \
-            "_" + df["lifecycle:transition:"]
-        df = df[['time:timestamp', 'name_and_transition']]
+            "_" + df["lifecycle:transition"]
+        df = df[['time:timestamp', 'name_and_transition', "caseid"]]
         newData = list()
         for case, group in df.groupby('caseid'):
             group.sort_values("time:timestamp", ascending=True, inplace=True)
@@ -34,27 +35,29 @@ class BPI2012Dataset(Dataset):
             ending_time = group.iloc[-1]["time:timestamp"] + \
                 timedelta(microseconds=1)
             traces = group.to_dict('record')
+
+            # Add start and end tags.
             traces.insert(
-                0, {"caseid": case, "time:timestamp": strating_time, "name_and_transition": "<START>"})
+                0, {"caseid": case, "time:timestamp": strating_time, "name_and_transition": Constants.SOS_VOCAB})
             traces.append(
-                {"caseid": case, "time:timestamp": ending_time, "name_and_transition": "<END>"})
+                {"caseid": case, "time:timestamp": ending_time, "name_and_transition": Constants.EOS_VOCAB})
             newData.extend(traces)
 
         df = pd.DataFrame(newData)
         df['name_and_transition'] = df['name_and_transition'].astype(
             'category')
 
-        event_dict = dict(str, int)
+        event_dict: dict[str, int] = {}
         for i, cat in enumerate(df['name_and_transition'].cat.categories):
             # plus one, since we want to remain "0" for "<PAD>"
             event_dict[cat] = i+1
-        event_dict["<PAD>"] = 0
+        event_dict[Constants.PAD_VOCAB] = 0
 
         # Create new index categorial column
         df['cat'] = df['name_and_transition'].apply(lambda c: event_dict[c])
 
         # Create the df only consist of trace and caseid
-        final_df_data = list(dict(str, any))
+        final_df_data: list[dict[str, any]] = []
         for caseid, group in df.groupby('caseid'):
             final_df_data.append({
                 "trace": list(group['cat']),
@@ -87,7 +90,7 @@ class BPI2012Dataset(Dataset):
     def __getitem__(self, index: int) -> pd.Series:
         return self.df.iloc[index]
 
-    def collate_fn(self, data: list(pd.Series)) -> Tuple(np.ndarray, torch.Tensor, torch.Tensor, np.ndarray):
+    def collate_fn(self, data: list[pd.Series]) -> Iterable[Union[np.ndarray, torch.Tensor, torch.Tensor, np.ndarray]]:
         caseid_list, seq_list = zip(
             *[(d["caseid"], torch.tensor(d["trace"])) for d in data])
         caseid_list = list(caseid_list)
@@ -99,9 +102,5 @@ class BPI2012Dataset(Dataset):
         sorted_seq_list = [seq_list[idx] for idx in sorted_len_index]
         sorted_case_id = np.array(caseid_list)[sorted_len_index]
         seq_tensor = pad_sequence(sorted_seq_list, batch_first=True)
-        train_seq = F.one_hot(
-            seq_tensor[:, :-1], num_classes=self.num_of_unique_events)
-        target_seq = F.one_hot(
-            seq_tensor[:, 1:], num_classes=self.num_of_unique_events)
 
-        return sorted_case_id, train_seq, target_seq, sorted_seq_lens
+        return sorted_case_id, seq_tensor[:, :-1], seq_tensor[:, 1:], sorted_seq_lens- 1 # since we reduce the length for train and target
