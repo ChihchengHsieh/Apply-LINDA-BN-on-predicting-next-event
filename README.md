@@ -6,6 +6,7 @@
 - [x] Create pytorch lstm
 - [x] Create trainer (TrainingController)
 - [ ] Add cross validation
+- [ ] Track testset performance
 - [ ] Read papers
 - [ ] Read LINDA-BN implementation
 - [ ] Apply LINDA-BN
