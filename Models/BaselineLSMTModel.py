@@ -22,6 +22,8 @@ class BaselineLSTMModel(nn.Module):
         self.h0 = nn.Parameter(torch.randn(num_lstm_layers, 1, lstm_hidden))
         self.c0 = nn.Parameter(torch.randn(num_lstm_layers, 1, lstm_hidden))
 
+        self.apply(self.weight_init)
+
     def forward(self, input: torch.tensor, lengths: np.ndarray = None) -> torch.tensor:
         '''
         Input size: (B ,S)
@@ -46,10 +48,35 @@ class BaselineLSTMModel(nn.Module):
     def argmax_prediction(self, input: torch.tensor, lengths: np.ndarray = None, onlyReturnFinalStep: bool = True) -> torch.tensor:
         seq_size = input.size(1)
         out = self.forward(input)  # (B, S, vocab_size)
-        out = F.softmax(out, dim=-1)  # (B, S, vocab_size)
-        out = torch.argmax(out, dim=-1)  # (B, S)
+        out = self.get_predicted_seq_from_output(out)
         if onlyReturnFinalStep:
             final_index = torch.tensor([l - 1 for l in lengths])
             final_out_mask = torch.gt(F.one_hot(final_index, seq_size), 0)
             out =  out.masked_select(final_out_mask) # (B)
         return out
+    
+    @staticmethod
+    def get_predicted_seq_from_output(out: torch.tensor):
+        out = F.softmax(out, dim=-1)  # (B, S, vocab_size)
+        out = torch.argmax(out, dim=-1)  # (B, S)
+        return out
+
+    def weight_init(self, m) -> None:
+        '''
+        Initialising the weihgt
+        '''
+
+        if type(m) in [nn.Conv2d, nn.ConvTranspose2d, nn.Linear, nn.Conv1d]:
+            nn.init.kaiming_normal_(m.weight, 0.2, nonlinearity='leaky_relu')
+        elif type(m) in [nn.LSTM]:
+            for name, value in m.named_parameters():
+                if 'weight' in name:
+                    nn.init.xavier_normal_(value.data)
+                if 'bias'in name:
+                    value.data.normal_()
+
+    def num_all_params(self,) -> int:
+        '''
+        Print how many parameters in the model
+        '''
+        return sum([param.nelement() for param in self.parameters()])

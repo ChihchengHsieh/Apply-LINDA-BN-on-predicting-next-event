@@ -103,4 +103,4 @@ class BPI2012Dataset(Dataset):
         sorted_case_id = np.array(caseid_list)[sorted_len_index]
         seq_tensor = pad_sequence(sorted_seq_list, batch_first=True)
 
-        return sorted_case_id, seq_tensor[:, :-1], seq_tensor[:, 1:], sorted_seq_lens- 1 # since we reduce the length for train and target
+        return sorted_case_id, seq_tensor[:, :-1], seq_tensor[:, 1:], torch.tensor(sorted_seq_lens- 1) # since we reduce the length for train and target
