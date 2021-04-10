@@ -47,14 +47,14 @@ class BPI2012Dataset(Dataset):
         df['name_and_transition'] = df['name_and_transition'].astype(
             'category')
 
-        event_dict: dict[str, int] = {}
+        vocab_dict: dict[str, int] = {}
         for i, cat in enumerate(df['name_and_transition'].cat.categories):
             # plus one, since we want to remain "0" for "<PAD>"
-            event_dict[cat] = i+1
-        event_dict[Constants.PAD_VOCAB] = 0
+            vocab_dict[cat] = i+1
+        vocab_dict[Constants.PAD_VOCAB] = 0
 
         # Create new index categorial column
-        df['cat'] = df['name_and_transition'].apply(lambda c: event_dict[c])
+        df['cat'] = df['name_and_transition'].apply(lambda c: vocab_dict[c])
 
         # Create the df only consist of trace and caseid
         final_df_data: list[dict[str, any]] = []
@@ -65,24 +65,24 @@ class BPI2012Dataset(Dataset):
             })
 
         self.df: pd.DataFrame = pd.DataFrame(final_df_data)
-        self.__event_dict: dict(str, int) = event_dict
+        self.__vocab_dict: dict(str, int) = vocab_dict
 
     def longest_trace_len(self) -> int:
         return self.df.trace.map(len).max()
 
-    def index_to_event(self, index: int) -> str:
-        for k, v in self.__event_dict.items():
+    def index_to_vocab(self, index: int) -> str:
+        for k, v in self.__vocab_dict.items():
             if (v == index):
                 return k
             continue
 
-    def event_to_index(self, event: str) -> int:
-        return self.__event_dict[event]
+    def vocab_to_index(self, vocab: str) -> int:
+        return self.__vocab_dict[vocab]
 
-    def num_of_unique_events(self) -> int:
+    def vocab_size(self) -> int:
         # This include tokens
         # minus 3 to remove <START>, <END> and <PAD>
-        return len(self.__event_dict)
+        return len(self.__vocab_dict)
 
     def __len__(self) -> int:
         return len(self.df)
