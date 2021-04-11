@@ -12,6 +12,8 @@
 - [x] Save model, traing parameters, testing data after training is done.
 - [x] Load pre-trained model
 - [x] Save and load pre-processed data.
+- [ ] Add sample prediction in model.
+- [ ] Find a way to make RNN output as next timestamp input.
 - [ ] Predict by input data.
 - [ ] Read papers
 - [ ] Read LINDA-BN implementation
@@ -22,4 +24,13 @@
 
 #### Training Screenshot
 ![](https://github.com/ChihchengHsieh/Apply-LINDA-BN-on-predicting-next-event/blob/master/TrainingScreenshot/NotebookScreenshot.png?raw=true)
+
+
+#### For prediction
+
+Prediction should accept a json file with 2D array. (seq of traces)
+
+Then, load the model (Need to create another controller for accesss prediction?)
+
+
 
