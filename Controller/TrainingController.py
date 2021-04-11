@@ -1,6 +1,6 @@
 from typing import Tuple
 from torch.utils.data import DataLoader
-from Controller.TrainingParameters import TrainingParameters
+from Controller.TrainingParameters import SelectableLrScheduler, TrainingParameters
 from Utils.Constants import Constants
 from enum import Enum
 import torch
@@ -71,6 +71,19 @@ class TrainingController:
         else:
             raise NotSupportedError("Optimizer you selected is not supported")
 
+
+        # Setting up the learning rate scheduler
+        if (TrainingParameters.OptimizerParameters.scheduler == SelectableLrScheduler.StepScheduler):
+            self.scheduler = optim.lr_scheduler.StepLR(
+            self.opt,
+            step_size=TrainingParameters.OptimizerParameters.lr_scheduler_step,
+            gamma=TrainingParameters.OptimizerParameters.lr_scheduler_gamma,
+        )
+        elif TrainingParameters.OptimizerParameters.scheduler == SelectableLrScheduler.NotUsing:
+            self.scheduler = None
+        else:
+            raise NotSupportedError("Learning rate scheduler you selected is not supported");
+
         # Setting up loss
 
         if (loss == SelectableLoss.CrossEntropy):
@@ -97,10 +110,11 @@ class TrainingController:
 
                 if self.steps > 0 and self.steps % TrainingParameters.run_validation_freq == 0:
                     print_peforming_task("Validation")
-                    self.perform_eval_on_dataloader(self.validation_data_loader)
+                    self.perform_eval_on_dataloader(
+                        self.validation_data_loader)
 
             self.epoch += 1
-        
+
         print_peforming_task("Testing")
         self.perform_eval_on_dataloader(self.test_data_loader)
 
@@ -115,6 +129,8 @@ class TrainingController:
         loss, accuracy = self.model_step(train_data, target, lengths)
         loss.backward()
         self.opt.step()
+        if not self.scheduler is None:
+            self.scheduler.step()
 
         return loss, accuracy
 
@@ -153,8 +169,9 @@ class TrainingController:
             all_batch_size.append(len(lengths))
 
         mean_accuracy = (torch.tensor(
-            all_accuracy)* torch.tensor(all_batch_size)).sum()/ len(dataloader.dataset)
-        mean_loss = (torch.tensor(all_loss) * torch.tensor(all_batch_size)).sum()/ len(dataloader.dataset)
+            all_accuracy) * torch.tensor(all_batch_size)).sum() / len(dataloader.dataset)
+        mean_loss = (torch.tensor(all_loss) *
+                     torch.tensor(all_batch_size)).sum() / len(dataloader.dataset)
 
         print(
             "=================================================" + "\n" +
