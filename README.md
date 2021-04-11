@@ -8,7 +8,8 @@
 - [x] Add validation
 - [x] Do testset performance test
 - [x] Add Lr scheduler 
-- [ ] Add training and testing accuracy plot.
+- [x] Add training and testing accuracy plot.
+- [ ] Save model, traing parameters, testing data after training is done.
 - [ ] Read papers
 - [ ] Read LINDA-BN implementation
 - [ ] Apply LINDA-BN
