@@ -9,7 +9,10 @@
 - [x] Do testset performance test
 - [x] Add Lr scheduler 
 - [x] Add training and testing accuracy plot.
-- [ ] Save model, traing parameters, testing data after training is done.
+- [x] Save model, traing parameters, testing data after training is done.
+- [x] Load pre-trained model
+- [x] Save and load pre-processed data.
+- [ ] Predict by input data.
 - [ ] Read papers
 - [ ] Read LINDA-BN implementation
 - [ ] Apply LINDA-BN
