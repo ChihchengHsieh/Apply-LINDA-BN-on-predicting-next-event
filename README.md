@@ -13,7 +13,6 @@
 - [x] Load pre-trained model
 - [x] Save and load pre-processed data.
 - [ ] Add sample prediction in model.
-- [ ] Find a way to make RNN output as next timestamp input.
 - [ ] Predict by input data.
 - [ ] Read papers
 - [ ] Read LINDA-BN implementation
