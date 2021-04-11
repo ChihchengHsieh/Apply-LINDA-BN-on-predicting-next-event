@@ -110,7 +110,7 @@ class TrainingController:
 
         # Load trained model if need
         if not TrainingParameters.load_model_folder_path is None:
-            self.load_trained_model(TrainingParameters.load_model_folder_path)
+            self.load_trained_model(TrainingParameters.load_model_folder_path, TrainingParameters.load_optimizer)
 
     def train(self,):
         self.model.to(self.device)
@@ -245,7 +245,7 @@ class TrainingController:
             "============================"
         )
 
-    def load_trained_model(self, folder_path: str):
+    def load_trained_model(self, folder_path: str, load_optimizer: bool):
         figure_loading_path = os.path.join(folder_path, TrainingRecord.records_save_file_name)
         self.record.load_records(figure_loading_path)
 
@@ -253,7 +253,10 @@ class TrainingController:
         checkpoint = torch.load(model_loading_path)
 
         self.model.load_state_dict(checkpoint['model_state_dict'])
-        self.opt.load_state_dict(checkpoint['optimizer_state_dict'])
+
+        if load_optimizer:
+            self.opt.load_state_dict(checkpoint['optimizer_state_dict'])
+
         self.epoch = checkpoint['epoch']
         self.steps = checkpoint['steps']
 
