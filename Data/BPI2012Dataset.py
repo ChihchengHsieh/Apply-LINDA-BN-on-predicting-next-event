@@ -15,7 +15,7 @@ from Utils.Constants import Constants
 from Utils.FileUtils import file_exists
 import pickle
 import os
-from Parameters.TrainingParameters import PreprocessedDfType
+from Parameters.Enums import PreprocessedDfType
 
 
 class BPI2012Dataset(Dataset):

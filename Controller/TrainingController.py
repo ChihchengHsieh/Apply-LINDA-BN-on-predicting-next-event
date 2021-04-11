@@ -13,7 +13,8 @@ from Data.BPI2012Dataset import BPI2012Dataset
 from Models.BaselineLSMTModel import BaselineLSTMModel
 from Controller.TrainingRecord import TrainingRecord
 from CustomExceptions.Exceptions import NotSupportedError
-from Parameters.TrainingParameters import SelectableDatasets, SelectableModels, SelectableOptimizer, SelectableLoss,  SelectableLrScheduler, TrainingParameters
+from Parameters.TrainingParameters import TrainingParameters
+from Parameters.Enums import SelectableDatasets, SelectableLoss, SelectableLrScheduler, SelectableModels, SelectableOptimizer
 
 
 from Utils.PrintUtils import print_peforming_task
