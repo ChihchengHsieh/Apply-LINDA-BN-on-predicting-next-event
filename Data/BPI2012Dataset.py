@@ -1,7 +1,10 @@
+from CustomExceptions.Exceptions import NotSupportedError
+from json import load
 from typing import Iterable, Tuple, Union
 from pandas.core.frame import DataFrame
 import torch
 import pandas as pd
+from torch.jit import Error
 from torch.utils.data import Dataset, DataLoader
 import pm4py
 from datetime import timedelta
@@ -9,14 +12,40 @@ import numpy as np
 from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence, pack_sequence, pad_packed_sequence
 import torch.nn.functional as F
 from Utils.Constants import Constants
+from Utils.FileUtils import file_exists
+import pickle
+import os
+from Parameters.TrainingParameters import PreprocessedDfType
 
 
 class BPI2012Dataset(Dataset):
-    def __init__(self, filePath: str) -> None:
+    pickle_df_file_name = "df.pickle"
+    hdf5_df_file_name = "store.h5"
+    vocab_dict_file_name = "vocab_dict.pickle"
+
+    def __init__(self, filePath: str, preprocessed_folder_path: str, preprocessed_df_type: PreprocessedDfType) -> None:
         super().__init__()
-        self.__initialise_data(filePath=filePath)
+
+        self.filePath = filePath
+        self.preprocessed_folder_path = preprocessed_folder_path
+        self.preprocessed_df_type = preprocessed_df_type
+        self.__vocab_dict: dict(str, int)
         self.df: pd.DataFrame
-        self.__event_dict: dict(str, int)
+
+        if (not preprocessed_folder_path is None) and self.preprocessed_data_exist(preprocessed_folder_path, preprocessed_df_type):
+            self.load_preprocessed_data(
+                preprocessed_folder_path,
+                preprocessed_df_type,
+            )
+        else:
+            self.__initialise_data(filePath=filePath)
+
+            # Save preprocessed data.
+            if not preprocessed_folder_path is None:
+                self.save_preprocessed_data(
+                    preprocessed_folder_path,
+                    preprocessed_df_type,
+                )
 
     def __initialise_data(self, filePath: str) -> None:
         log = pm4py.read_xes(filePath)
@@ -90,7 +119,104 @@ class BPI2012Dataset(Dataset):
     def __getitem__(self, index: int) -> pd.Series:
         return self.df.iloc[index]
 
-    def collate_fn(self, data: list[pd.Series]) -> Iterable[Union[np.ndarray, torch.Tensor, torch.Tensor, np.ndarray]]:
+    @staticmethod
+    def get_file_name_from_preprocessed_df_type(preprocessed_df_type: PreprocessedDfType):
+        if preprocessed_df_type == PreprocessedDfType.HDF5:
+            return BPI2012Dataset.hdf5_df_file_name
+        elif preprocessed_df_type == PreprocessedDfType.Pickle:
+            return BPI2012Dataset.pickle_df_file_name
+        else:
+            raise NotSupportedError("Not supported saving format for preprocessed data")
+
+    @staticmethod
+    def preprocessed_data_exist(preprocessed_folder_path: str, preprocessed_df_type: PreprocessedDfType):
+        file_name = BPI2012Dataset.get_file_name_from_preprocessed_df_type(
+            preprocessed_df_type)
+        df_path = os.path.join(preprocessed_folder_path, file_name)
+        vocab_dict_path = os.path.join(
+            preprocessed_folder_path, BPI2012Dataset.vocab_dict_file_name)
+        return file_exists(df_path) and file_exists(vocab_dict_path)
+
+    def store_df(self, preprocessed_folder_path: str, preprocessed_df_type: PreprocessedDfType):
+        os.makedirs(preprocessed_folder_path, exist_ok= True)
+        file_name = BPI2012Dataset.get_file_name_from_preprocessed_df_type(
+            preprocessed_df_type)
+        df_path = os.path.join(preprocessed_folder_path, file_name)
+        if (preprocessed_df_type == PreprocessedDfType.HDF5):
+            self.store_df_in_hdf5(df_path)
+        elif(preprocessed_df_type == PreprocessedDfType.Pickle):
+            self.store_df_in_pickle(df_path)
+        else:
+            raise NotSupportedError(
+                "Not supported saving format for preprocessed data")
+
+    def load_df(self, preprocessed_folder_path: str, preprocessed_df_type: PreprocessedDfType):
+        file_name = BPI2012Dataset.get_file_name_from_preprocessed_df_type(
+            preprocessed_df_type)
+        df_path = os.path.join(preprocessed_folder_path, file_name)
+        if (preprocessed_df_type == PreprocessedDfType.HDF5):
+            self.load_df_from_hdf5(df_path)
+        elif(preprocessed_df_type == PreprocessedDfType.Pickle):
+            self.load_df_from_pickle(df_path)
+        else:
+            raise NotSupportedError(
+                "Not supported loading format for preprocessed data")
+
+    def store_df_in_hdf5(self, path):
+        store = pd.HDFStore(path)
+        store['df'] = self.df
+
+    def store_df_in_pickle(self, path):
+        self.df.to_pickle(path)
+
+    def load_df_from_hdf5(self, path):
+        store = pd.HDFStore(path)
+        self.df = store['df']
+
+    def load_df_from_pickle(self, path):
+        self.df = pd.read_pickle(path)
+
+    def save_preprocessed_data(self, preprocessed_folder_path: str, preprocessed_df_type: PreprocessedDfType):
+        if preprocessed_folder_path is None:
+            raise Error("Preprocessed folder path can't be None")
+
+        # Store df
+        self.store_df(preprocessed_folder_path, preprocessed_df_type)
+
+        # Store vocab_dict
+        vocab_dict_path = os.path.join(
+            preprocessed_folder_path, BPI2012Dataset.vocab_dict_file_name)
+        with open(vocab_dict_path, 'wb') as output_file:
+            pickle.dump(self.__vocab_dict, output_file,
+                        protocol=pickle.HIGHEST_PROTOCOL)
+
+        print(
+            "========================================"+"\n" +
+            "| Preprocessed data saved successfully |" + "\n" +
+            "========================================"
+        )
+
+    def load_preprocessed_data(self, preprocessed_folder_path: str, preprocessed_df_type: PreprocessedDfType):
+        if preprocessed_folder_path is None:
+            raise Error("Preprocessed folder path can't be None")
+
+        # Load df
+        self.load_df(preprocessed_folder_path, preprocessed_df_type)
+
+        # load vocab_dict
+        vocab_dict_path = os.path.join(
+            preprocessed_folder_path, BPI2012Dataset.vocab_dict_file_name)
+        with open(vocab_dict_path, 'rb') as output_file:
+            self.__vocab_dict = pickle.load(output_file)
+
+        print(
+            "========================================="+"\n" +
+            "| Preprocessed data loaded successfully |" + "\n" +
+            "========================================="
+        )
+
+    @staticmethod
+    def collate_fn(data: list[pd.Series]) -> Iterable[Union[np.ndarray, torch.Tensor, torch.Tensor, np.ndarray]]:
         caseid_list, seq_list = zip(
             *[(d["caseid"], torch.tensor(d["trace"])) for d in data])
         caseid_list = list(caseid_list)
@@ -103,4 +229,5 @@ class BPI2012Dataset(Dataset):
         sorted_case_id = np.array(caseid_list)[sorted_len_index]
         seq_tensor = pad_sequence(sorted_seq_list, batch_first=True)
 
-        return sorted_case_id, seq_tensor[:, :-1], seq_tensor[:, 1:], torch.tensor(sorted_seq_lens- 1) # since we reduce the length for train and target
+        # since we reduce the length for train and target
+        return sorted_case_id, seq_tensor[:, :-1], seq_tensor[:, 1:], torch.tensor(sorted_seq_lens - 1)

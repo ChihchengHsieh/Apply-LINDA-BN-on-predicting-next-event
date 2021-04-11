@@ -1,7 +1,10 @@
 import matplotlib.pyplot as plt
+import json
 
 
 class TrainingRecord:
+    records_save_file_name = "records.json"
+    figure_save_file_name = "plot.png"
     def __init__(self, record_freq_in_step: int):
         plt.ion()
 
@@ -54,3 +57,26 @@ class TrainingRecord:
         plt.legend(loc='upper left')
         plt.draw()
         plt.pause(0.001)
+
+    def save_records_to_file(self, path: str):
+        all_records = {
+            "train_accuracy_records": self.train_accuracy_records,
+            "train_loss_records": self.train_loss_records,
+            "validation_acuuracy_records": self.validation_acuuracy_records,
+            "validation_loss_records": self.validation_loss_records,
+        }
+
+        with open(path, 'w') as output_file:
+            json.dump(all_records, output_file, indent="\t")
+
+    def load_records(self, path: str):
+        with open(path, 'r') as output_file:
+            all_records: dict[str, list] = json.load(output_file)
+        self.train_accuracy_records = all_records["train_accuracy_records"]
+        self.train_loss_records = all_records["train_loss_records"]
+        self.validation_acuuracy_records = all_records["validation_acuuracy_records"]
+        self.validation_loss_records = all_records["validation_loss_records"]
+
+    def save_figure(self, path: str, dpi: int = 80):
+        if not self.fig is None:
+            plt.savefig(path, dpi=dpi)

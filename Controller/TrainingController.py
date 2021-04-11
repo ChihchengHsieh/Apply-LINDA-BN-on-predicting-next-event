@@ -1,17 +1,23 @@
-from typing import Tuple
-from torch.utils.data import DataLoader
-from Utils.Constants import Constants
+import os
 import torch
+import pathlib
+
 import torch.nn as nn
 import torch.optim as optim
+
+from typing import Tuple
+from datetime import datetime
+from Utils.Constants import Constants
+from torch.utils.data import DataLoader
 from Data.BPI2012Dataset import BPI2012Dataset
 from Models.BaselineLSMTModel import BaselineLSTMModel
-from Utils.Constants import Constants
-from Parameters.TrainingParameters import SelectableDatasets, SelectableModels, SelectableOptimizer, SelectableLoss,  SelectableLrScheduler, TrainingParameters
 from Controller.TrainingRecord import TrainingRecord
 from CustomExceptions.Exceptions import NotSupportedError
+from Parameters.TrainingParameters import SelectableDatasets, SelectableModels, SelectableOptimizer, SelectableLoss,  SelectableLrScheduler, TrainingParameters
+
 
 from Utils.PrintUtils import print_peforming_task
+
 
 class TrainingController:
     def __init__(self):
@@ -21,7 +27,10 @@ class TrainingController:
 
         # Load dataset
         if (TrainingParameters.dataset == SelectableDatasets.BPI2012):
-            self.dataset = BPI2012Dataset(TrainingParameters.bpi_2012_path)
+            self.dataset = BPI2012Dataset(filePath=TrainingParameters.bpi_2012_path,
+                                          preprocessed_folder_path=TrainingParameters.preprocessed_bpi_2012_folder_path,
+                                          preprocessed_df_type=TrainingParameters.preprocessed_df_type,
+                                        )
         else:
             raise NotSupportedError("Dataset you selected is not supported")
 
@@ -70,18 +79,18 @@ class TrainingController:
         else:
             raise NotSupportedError("Optimizer you selected is not supported")
 
-
         # Setting up the learning rate scheduler
         if (TrainingParameters.OptimizerParameters.scheduler == SelectableLrScheduler.StepScheduler):
             self.scheduler = optim.lr_scheduler.StepLR(
-            self.opt,
-            step_size=TrainingParameters.OptimizerParameters.lr_scheduler_step,
-            gamma=TrainingParameters.OptimizerParameters.lr_scheduler_gamma,
-        )
+                self.opt,
+                step_size=TrainingParameters.OptimizerParameters.lr_scheduler_step,
+                gamma=TrainingParameters.OptimizerParameters.lr_scheduler_gamma,
+            )
         elif TrainingParameters.OptimizerParameters.scheduler == SelectableLrScheduler.NotUsing:
             self.scheduler = None
         else:
-            raise NotSupportedError("Learning rate scheduler you selected is not supported");
+            raise NotSupportedError(
+                "Learning rate scheduler you selected is not supported")
 
         # Setting up loss
         if (TrainingParameters.loss == SelectableLoss.CrossEntropy):
@@ -93,10 +102,15 @@ class TrainingController:
         # Initialise counter
         self.epoch = 0
         self.steps = 0
-        self.stop_epoch = TrainingParameters.stop_epoch;
+        self.stop_epoch = TrainingParameters.stop_epoch
 
         # Initialise records
-        self.record = TrainingRecord(record_freq_in_step= TrainingParameters.run_validation_freq)
+        self.record = TrainingRecord(
+            record_freq_in_step=TrainingParameters.run_validation_freq)
+
+        # Load trained model if need
+        if not TrainingParameters.load_model_folder_path is None:
+            self.load_trained_model(TrainingParameters.load_model_folder_path)
 
     def train(self,):
         self.model.to(self.device)
@@ -114,13 +128,14 @@ class TrainingController:
 
                 if self.steps > 0 and self.steps % TrainingParameters.run_validation_freq == 0:
                     print_peforming_task("Validation")
-                    validation_loss, validation_accuracy   = self.perform_eval_on_dataloader(self.validation_data_loader)
+                    validation_loss, validation_accuracy = self.perform_eval_on_dataloader(
+                        self.validation_data_loader)
                     self.record.record_training_info(
-                        train_accuracy= train_accuracy,
-                        train_loss = train_loss,
-                        validation_accuracy= validation_accuracy,
-                        validation_loss = validation_loss
-                    );
+                        train_accuracy=train_accuracy,
+                        train_loss=train_loss,
+                        validation_accuracy=validation_accuracy,
+                        validation_loss=validation_loss
+                    )
                     self.record.plot_records()
 
             self.epoch += 1
@@ -165,7 +180,7 @@ class TrainingController:
 
         return loss, accuracy
 
-    def perform_eval_on_dataloader(self, dataloader: DataLoader)-> Tuple[float, float]:
+    def perform_eval_on_dataloader(self, dataloader: DataLoader) -> Tuple[float, float]:
         all_loss = []
         all_accuracy = []
         all_batch_size = []
@@ -190,6 +205,63 @@ class TrainingController:
             "================================================="
         )
         return mean_loss.item(), mean_accuracy.item()
+
+    def save_training_result(self, train_file: str):
+        '''
+        Save to SavedModels folder:
+        '''
+        saving_folder_path = os.path.join(pathlib.Path(
+            train_file).parent, "SavedModels/{}".format(str(datetime.now())))
+
+        # Create folder for saving
+        os.makedirs(saving_folder_path, exist_ok= True)
+
+        # Save training records
+        records_saving_path = os.path.join(saving_folder_path, TrainingRecord.records_save_file_name)
+        self.record.save_records_to_file(records_saving_path)
+
+        # Save training figure
+        figure_saving_path = os.path.join(saving_folder_path, TrainingRecord.figure_save_file_name )
+        self.record.save_figure(figure_saving_path)
+
+        # Save model
+        model_saving_path = os.path.join(saving_folder_path, self.model.model_save_file_name)
+        torch.save({
+            'model_state_dict': self.model.state_dict(),
+            'optimizer_state_dict': self.opt.state_dict(),
+            'epoch': self.epoch,
+            'steps': self.steps,
+        }, model_saving_path)
+
+        print(
+            "============================"+"\n" +
+            "| Model saved successfully |" + "\n" +
+            "============================"
+        )
+
+        print(
+            "============================"+"\n" +
+            "| Model saved folder: %s " % (saving_folder_path) + "\n" +
+            "============================"
+        )
+
+    def load_trained_model(self, folder_path: str):
+        figure_loading_path = os.path.join(folder_path, TrainingRecord.records_save_file_name)
+        self.record.load_records(figure_loading_path)
+
+        model_loading_path = os.path.join(folder_path, self.model.model_save_file_name)
+        checkpoint = torch.load(model_loading_path)
+
+        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self.opt.load_state_dict(checkpoint['optimizer_state_dict'])
+        self.epoch = checkpoint['epoch']
+        self.steps = checkpoint['steps']
+
+        print(
+            "============================="+"\n" +
+            "| Model loaded successfully |" + "\n" +
+            "============================="
+        )
 
     def reset_epoch(self):
         self.epoch = 0

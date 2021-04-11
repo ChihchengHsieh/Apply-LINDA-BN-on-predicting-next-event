@@ -7,6 +7,8 @@ from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 
 class BaselineLSTMModel(nn.Module):
+    model_save_file_name = "BaselineLSTMModel.pt"
+
     def __init__(self, vocab_size: int, embedding_dim: int,  lstm_hidden: int, dropout: float, num_lstm_layers: int, paddingValue: int = 0):
         super(BaselineLSTMModel, self).__init__()
 
