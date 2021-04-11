@@ -6,8 +6,9 @@
 - [x] Create pytorch lstm
 - [x] Create trainer (TrainingController)
 - [x] Add validation
-- [x] do testset performance test
-- [x] add Lr scheduler 
+- [x] Do testset performance test
+- [x] Add Lr scheduler 
+- [ ] Add training and testing accuracy plot.
 - [ ] Read papers
 - [ ] Read LINDA-BN implementation
 - [ ] Apply LINDA-BN
