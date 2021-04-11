@@ -1,27 +1,26 @@
 from typing import Tuple
 from torch.utils.data import DataLoader
-from Controller.TrainingParameters import SelectableLrScheduler, TrainingParameters
 from Utils.Constants import Constants
-from enum import Enum
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from Data.BPI2012Dataset import BPI2012Dataset
 from Models.BaselineLSMTModel import BaselineLSTMModel
 from Utils.Constants import Constants
-from Controller.TrainingParameters import SelectableDatasets, SelectableModels, SelectableOptimizer, SelectableLoss
+from Parameters.TrainingParameters import SelectableDatasets, SelectableModels, SelectableOptimizer, SelectableLoss,  SelectableLrScheduler, TrainingParameters
+from Controller.TrainingRecord import TrainingRecord
 from CustomExceptions.Exceptions import NotSupportedError
 
 from Utils.PrintUtils import print_peforming_task
 
 class TrainingController:
-    def __init__(self, dataset: SelectableDatasets, model: SelectableModels, optimizer: SelectableOptimizer, loss: SelectableLoss):
+    def __init__(self):
         # determine the device
         self.device = torch.device(
             'cuda' if torch.cuda.is_available() else 'cpu')
 
         # Load dataset
-        if (dataset == SelectableDatasets.BPI2012):
+        if (TrainingParameters.dataset == SelectableDatasets.BPI2012):
             self.dataset = BPI2012Dataset(TrainingParameters.bpi_2012_path)
         else:
             raise NotSupportedError("Dataset you selected is not supported")
@@ -49,7 +48,7 @@ class TrainingController:
             self.test_dataset, batch_size=TrainingParameters.batch_size, shuffle=True, collate_fn=self.dataset.collate_fn)
 
         # Setting up model
-        if (model == SelectableModels.BaseLineLSTMModel):
+        if (TrainingParameters.model == SelectableModels.BaseLineLSTMModel):
             self.model = BaselineLSTMModel(
                 vocab_size=self.dataset.vocab_size(),
                 embedding_dim=TrainingParameters.BaselineLSTMModelParameters.embedding_dim,
@@ -62,7 +61,7 @@ class TrainingController:
             raise NotSupportedError("Model you selected is not supported")
 
         # Setting up optimizer
-        if optimizer == SelectableOptimizer.Adam:
+        if TrainingParameters.optimizer == SelectableOptimizer.Adam:
             self.opt = optim.Adam(
                 self.model.parameters(),
                 lr=TrainingParameters.OptimizerParameters.learning_rate,
@@ -85,18 +84,23 @@ class TrainingController:
             raise NotSupportedError("Learning rate scheduler you selected is not supported");
 
         # Setting up loss
-
-        if (loss == SelectableLoss.CrossEntropy):
+        if (TrainingParameters.loss == SelectableLoss.CrossEntropy):
             self.loss = nn.CrossEntropyLoss()
         else:
             raise NotSupportedError(
                 "Loss function you selected is not supported")
+
+        # Initialise counter
         self.epoch = 0
         self.steps = 0
+        self.stop_epoch = TrainingParameters.stop_epoch;
 
-    def train(self, stop_epoch: int):
+        # Initialise records
+        self.record = TrainingRecord(record_freq_in_step= TrainingParameters.run_validation_freq)
+
+    def train(self,):
         self.model.to(self.device)
-        while self.epoch < stop_epoch:
+        while self.epoch < self.stop_epoch:
             for _, (_, train_data, train_target, train_lengths) in enumerate(self.train_data_loader):
                 train_data, train_target, train_lengths = train_data.to(
                     self.device), train_target.to(self.device), train_lengths.to(self.device)
@@ -110,8 +114,14 @@ class TrainingController:
 
                 if self.steps > 0 and self.steps % TrainingParameters.run_validation_freq == 0:
                     print_peforming_task("Validation")
-                    self.perform_eval_on_dataloader(
-                        self.validation_data_loader)
+                    validation_loss, validation_accuracy   = self.perform_eval_on_dataloader(self.validation_data_loader)
+                    self.record.record_training_info(
+                        train_accuracy= train_accuracy,
+                        train_loss = train_loss,
+                        validation_accuracy= validation_accuracy,
+                        validation_loss = validation_loss
+                    );
+                    self.record.plot_records()
 
             self.epoch += 1
 
@@ -132,7 +142,7 @@ class TrainingController:
         if not self.scheduler is None:
             self.scheduler.step()
 
-        return loss, accuracy
+        return loss.item(), accuracy.item()
 
     def eval_step(self, validation_data: torch.tensor, target: torch.tensor, lengths: torch.tensor):
         '''
@@ -155,7 +165,7 @@ class TrainingController:
 
         return loss, accuracy
 
-    def perform_eval_on_dataloader(self, dataloader: DataLoader):
+    def perform_eval_on_dataloader(self, dataloader: DataLoader)-> Tuple[float, float]:
         all_loss = []
         all_accuracy = []
         all_batch_size = []
@@ -164,8 +174,8 @@ class TrainingController:
                 self.device), target.to(self.device), lengths.to(self.device)
             loss, accuracy = self.eval_step(
                 data, target, lengths)
-            all_loss.append(loss.item())
-            all_accuracy.append(accuracy.item())
+            all_loss.append(loss)
+            all_accuracy.append(accuracy)
             all_batch_size.append(len(lengths))
 
         mean_accuracy = (torch.tensor(
@@ -179,6 +189,7 @@ class TrainingController:
                 mean_accuracy, mean_loss) + "\n"
             "================================================="
         )
+        return mean_loss.item(), mean_accuracy.item()
 
     def reset_epoch(self):
         self.epoch = 0

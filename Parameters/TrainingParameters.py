@@ -24,9 +24,12 @@ class SelectableLrScheduler(Enum):
 
 
 class TrainingParameters:
+    '''
+    Storing the parameters for controlling the training.
+    '''
 
     # Move it to dataset path class
-    bpi_2012_path = '../Data/event_logs/BPI_Challenge_2012.xes'
+    bpi_2012_path: str = '../Data/event_logs/BPI_Challenge_2012.xes'
 
     dataset: SelectableDatasets = SelectableDatasets.BPI2012
     model: SelectableModels = SelectableModels.BaseLineLSTMModel
@@ -34,12 +37,12 @@ class TrainingParameters:
     loss: SelectableLoss = SelectableLoss.CrossEntropy
 
     stop_epoch: int = 1
-    batch_size = 32
+    batch_size: int = 32
     # Remaining will be used for validation.
     train_test_split_portion = [0.8, 0.1]
 
-    verbose_freq = 50
-    run_validation_freq = 200
+    verbose_freq: int = 50
+    run_validation_freq: int = 200
 
     class OptimizerParameters:
         learning_rate: float = 0.005
