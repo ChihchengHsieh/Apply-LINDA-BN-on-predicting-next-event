@@ -13,7 +13,7 @@ from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence, pack_sequence
 import torch.nn.functional as F
 from Utils.Constants import Constants
 from Utils.FileUtils import file_exists
-import pickle
+import json
 import os
 from Parameters.Enums import PreprocessedDfType
 
@@ -21,7 +21,7 @@ from Parameters.Enums import PreprocessedDfType
 class BPI2012Dataset(Dataset):
     pickle_df_file_name = "df.pickle"
     hdf5_df_file_name = "store.h5"
-    vocab_dict_file_name = "vocab_dict.pickle"
+    vocab_dict_file_name = "vocab_dict.json"
 
     def __init__(self, filePath: str, preprocessed_folder_path: str, preprocessed_df_type: PreprocessedDfType) -> None:
         super().__init__()
@@ -186,9 +186,8 @@ class BPI2012Dataset(Dataset):
         # Store vocab_dict
         vocab_dict_path = os.path.join(
             preprocessed_folder_path, BPI2012Dataset.vocab_dict_file_name)
-        with open(vocab_dict_path, 'wb') as output_file:
-            pickle.dump(self.__vocab_dict, output_file,
-                        protocol=pickle.HIGHEST_PROTOCOL)
+        with open(vocab_dict_path, 'w') as output_file:
+            json.dump(self.__vocab_dict, output_file, indent='\t')
 
         print(
             "========================================"+"\n" +
@@ -206,8 +205,8 @@ class BPI2012Dataset(Dataset):
         # load vocab_dict
         vocab_dict_path = os.path.join(
             preprocessed_folder_path, BPI2012Dataset.vocab_dict_file_name)
-        with open(vocab_dict_path, 'rb') as output_file:
-            self.__vocab_dict = pickle.load(output_file)
+        with open(vocab_dict_path, 'r') as output_file:
+            self.__vocab_dict = json.load(output_file)
 
         print(
             "========================================="+"\n" +

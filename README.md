@@ -31,5 +31,9 @@ Prediction should accept a json file with 2D array. (seq of traces)
 
 Then, load the model (Need to create another controller for accesss prediction?)
 
+Prediction => Concat the output (Sample or argmax) for the next prediction, then output the final trace.
+
+
+
 
 

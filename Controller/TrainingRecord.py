@@ -67,7 +67,7 @@ class TrainingRecord:
         }
 
         with open(path, 'w') as output_file:
-            json.dump(all_records, output_file, indent="\t")
+            json.dump(all_records, output_file, indent='\t')
 
     def load_records(self, path: str):
         with open(path, 'r') as output_file:
