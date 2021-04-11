@@ -12,3 +12,10 @@ def printDoneTask():
     stdout.write("[DONE]")
     stdout.flush()
     stdout.write("\n")
+
+def print_peforming_task(task: str):
+    print(
+    "=================================================" + "\n" +
+    "| Peforming %s..." % (task) + "\n"
+    "================================================="
+    )

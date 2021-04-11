@@ -14,9 +14,8 @@ class SelectableOptimizer(Enum):
     Adam = 1
 
 class TrainingParameters:
-    '''
-    LSTM baseline model parameters
-    '''
+    
+    ## Move it to dataset path class
     bpi_2012_path = '../Data/event_logs/BPI_Challenge_2012.xes'
 
     dataset: SelectableDatasets = SelectableDatasets.BPI2012
@@ -25,6 +24,11 @@ class TrainingParameters:
     loss: SelectableLoss = SelectableLoss.CrossEntropy
 
     stop_epoch: int = 1
+    batch_size = 32
+    train_test_split_portion = [0.8, 0.1] # Remaining will be used for validation.
+
+    verbose_freq = 50;
+    run_validation_freq = 200;
 
     class OptimizerParameters:
         learning_rate: float = 0.005
