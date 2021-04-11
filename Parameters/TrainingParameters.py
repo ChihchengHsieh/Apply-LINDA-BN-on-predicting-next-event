@@ -41,8 +41,8 @@ class TrainingParameters:
     # Remaining will be used for validation.
     train_test_split_portion = [0.8, 0.1]
 
-    verbose_freq: int = 50
-    run_validation_freq: int = 200
+    verbose_freq: int = 20
+    run_validation_freq: int = 40
 
     class OptimizerParameters:
         learning_rate: float = 0.005
@@ -52,7 +52,7 @@ class TrainingParameters:
         scheduler: SelectableLrScheduler = SelectableLrScheduler.StepScheduler
 
     class BaselineLSTMModelParameters:
-        embedding_dim: int = 128
-        lstm_hidden: int = 256
+        embedding_dim: int = 16 # 128
+        lstm_hidden: int = 32 # 256
         dropout: float = .1
-        num_lstm_layers: int = 2
+        num_lstm_layers: int = 1 # 2
