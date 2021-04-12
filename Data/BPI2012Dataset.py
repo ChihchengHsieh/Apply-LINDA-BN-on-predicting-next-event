@@ -105,6 +105,12 @@ class BPI2012Dataset(Dataset):
                 return k
             continue
 
+    def list_of_index_to_vocab(self, list_of_index: list[int]):
+        return [self.index_to_vocab(i) for i in list_of_index]
+
+    def list_of_vocab_to_index(self, list_of_vocab: list[str]):
+        return [self.vocab_to_index(v) for v in list_of_vocab]
+
     def vocab_to_index(self, vocab: str) -> int:
         return self.__vocab_dict[vocab]
 
@@ -126,7 +132,8 @@ class BPI2012Dataset(Dataset):
         elif preprocessed_df_type == PreprocessedDfType.Pickle:
             return BPI2012Dataset.pickle_df_file_name
         else:
-            raise NotSupportedError("Not supported saving format for preprocessed data")
+            raise NotSupportedError(
+                "Not supported saving format for preprocessed data")
 
     @staticmethod
     def preprocessed_data_exist(preprocessed_folder_path: str, preprocessed_df_type: PreprocessedDfType):
@@ -138,7 +145,7 @@ class BPI2012Dataset(Dataset):
         return file_exists(df_path) and file_exists(vocab_dict_path)
 
     def store_df(self, preprocessed_folder_path: str, preprocessed_df_type: PreprocessedDfType):
-        os.makedirs(preprocessed_folder_path, exist_ok= True)
+        os.makedirs(preprocessed_folder_path, exist_ok=True)
         file_name = BPI2012Dataset.get_file_name_from_preprocessed_df_type(
             preprocessed_df_type)
         df_path = os.path.join(preprocessed_folder_path, file_name)
@@ -221,12 +228,23 @@ class BPI2012Dataset(Dataset):
         caseid_list = list(caseid_list)
         seq_list = list(seq_list)
 
-        se_lens = np.array([len(s)for s in seq_list])
-        sorted_len_index = np.flip(np.argsort(se_lens))
-        sorted_seq_lens = se_lens[sorted_len_index]
+        # Get sorting index
+        se_lens_before_splitting = np.array([len(s)for s in seq_list])
+        sorted_len_index = np.flip(np.argsort(se_lens_before_splitting))
+
+        # Sort caseids and traces
         sorted_seq_list = [seq_list[idx] for idx in sorted_len_index]
         sorted_case_id = np.array(caseid_list)[sorted_len_index]
-        seq_tensor = pad_sequence(sorted_seq_list, batch_first=True)
 
-        # since we reduce the length for train and target
-        return sorted_case_id, seq_tensor[:, :-1], seq_tensor[:, 1:], torch.tensor(sorted_seq_lens - 1)
+        # Build training and test seq
+        data_seq_list = [li[:-1] for li in sorted_seq_list] # it should remove all the EOS to form a training set
+        target_seq_list = [li[1:] for li in sorted_seq_list] # it should remove all the SOS to form a testing set
+
+        # Get lengths
+        data_seq_length = [len(l) for l in data_seq_list]
+
+        # Pad data and target 
+        padded_data = pad_sequence(data_seq_list, batch_first=True)
+        padded_target = pad_sequence(target_seq_list, batch_first= True)
+
+        return sorted_case_id, padded_data, padded_target, torch.tensor(data_seq_length)

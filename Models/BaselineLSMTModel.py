@@ -1,4 +1,6 @@
 
+from operator import le
+from typing import Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -24,57 +26,143 @@ class BaselineLSTMModel(nn.Module):
         self.h0 = nn.Parameter(torch.randn(num_lstm_layers, 1, lstm_hidden))
         self.c0 = nn.Parameter(torch.randn(num_lstm_layers, 1, lstm_hidden))
 
-        self.apply(self.weight_init)
+        self.apply(BaselineLSTMModel.weight_init)
 
-    def forward(self, input: torch.tensor, lengths: np.ndarray = None) -> torch.tensor:
+    def forward(self, input: torch.tensor, lengths: np.ndarray = None, prev_hidden_states: Tuple[torch.tensor] = None) -> Tuple[torch.tensor, Tuple[torch.tensor, torch.tensor]]:
         '''
         Input size: (B ,S)
-        Output size: (B, S, vocab_size)
+        Output size: (B, S, vocab_size), ((num))
+        Preveious state size: (num_lstm_layers, batch_szie, lstm_hidden)
         '''
-        # input (B, S)
+
         batch_size = input.size(0)
+
+        # Prepare hidden state input
+        if not prev_hidden_states is None:
+            if (len(prev_hidden_states)) != 2:
+                raise Exception("The length of given previous hidden state is not correct, expected %d, but get %d" % (
+                    2, len(prev_hidden_states)))
+            expected_previous_state_size = (
+                self.lstm.num_layers, batch_size, self.lstm.hidden_size)
+            if prev_hidden_states[0].size() != expected_previous_state_size:
+                raise Exception("The expected size from previous state is %s, the input has size %s" % (
+                    str(expected_previous_state_size), str(tuple(prev_hidden_states[0].size()))))
+
+            if prev_hidden_states[1].size() != expected_previous_state_size:
+                raise Exception("The expected size from previous state is %s, the input has size %s" % (
+                    str(expected_previous_state_size), str(tuple(prev_hidden_states[1].size()))))
+
+            input_hidden_state = prev_hidden_states
+        else:
+            input_hidden_state = (self.h0.repeat(
+                1, batch_size, 1), self.c0.repeat(1, batch_size, 1))
+
+        # input (B, S)
         out = self.emb(input)  # ( B, S, F )
 
         if not lengths is None:
             out = pack_padded_sequence(out, lengths=lengths, batch_first=True)
-            out, _ = self.lstm(out, (self.h0.repeat(
-                1, batch_size, 1), self.c0.repeat(1, batch_size, 1)))  # ( B, S, F)
+            out, (h_out, c_out) = self.lstm(
+                out, input_hidden_state)  # ( B, S, F)
             out, _ = pad_packed_sequence(out, batch_first=True)
         else:
-            out, _ = self.lstm(out, (self.h0.repeat(
-                1, batch_size, 1), self.c0.repeat(1, batch_size, 1)))  # ( B, S, F)
+            out, (h_out, c_out) = self.lstm(
+                out, input_hidden_state)  # ( B, S, F)
 
         out = self.output_net(out)  # (B, S, vocab_size)
-        return out
+        return out, (h_out, c_out)
 
-    def argmax_prediction(self, input: torch.tensor, lengths: np.ndarray = None, onlyReturnFinalStep: bool = True) -> torch.tensor:
-        seq_size = input.size(1)
-        out = self.forward(input)  # (B, S, vocab_size)
-        out = self.get_predicted_seq_from_output(out)
-        if onlyReturnFinalStep:
-            final_index = torch.tensor([l - 1 for l in lengths])
-            final_out_mask = torch.gt(F.one_hot(final_index, seq_size), 0)
-            out =  out.masked_select(final_out_mask) # (B)
-        return out
-    
+    def predict_next(self, input: torch.tensor, lengths: torch.tensor = None, previous_hidden_state: Tuple[torch.tensor, torch.tensor] = None, use_argmax: bool = False):
+        batch_size = input.size(0)  # (B, S)
+
+        out, hidden_out = self.forward(
+            input, prev_hidden_states=previous_hidden_state)  # (B, S, vocab_size)
+
+        # Get the last output from each seq
+        # len - 1 to get the index,
+        # a len == 80 seq, will only have index 79 as the last output (from the 79 input)
+        final_index = lengths - 1
+        out = out[torch.arange(batch_size), final_index, :]  # (B, Vocab)
+        out = F.softmax(out, dim=-1)  # (B, vocab_size)
+        if (use_argmax):
+            out = torch.argmax(out, dim=-1)  # (B)
+        else:
+            out = torch.multinomial(out, num_samples=1).squeeze()  # (B)
+
+        return out, hidden_out
+
+    def predict_next_n(self, input: torch.tensor, n: int, lengths: torch.tensor = None, use_argmax: bool = False):
+        # Unpadded the input
+        predicted_list = [[i.item() for i in l if i != 0] for l in input]
+
+        # Initialise hidden state
+        hidden_state = None
+        for _ in range(n):
+            # Predict
+            predicted, hidden_state = self.predict_next(input=input, lengths=lengths,
+                                                        previous_hidden_state=hidden_state, use_argmax=use_argmax)
+
+            # Add predicted to unpadded.
+            predicted_list = [u + [p.item()]
+                              for u, p in zip(predicted_list, predicted)]
+
+            # Assign for the next loop input, since tensor use reference, we won't use too much memory for it.
+            input = predicted.unsqueeze(-1)
+            lengths = torch.ones_like(lengths)
+
+        return predicted_list
+
+    def predict_next_till_eos(self, input: torch.tensor, lengths: torch.tensor, eos_idx: int, use_argmax: bool = False):
+        # Unpadded the input
+        input_list = [[i.item() for i in l if i != 0] for l in input]
+        predicted_list = [None] * len(input_list)
+
+        # Initialise hidden state
+        hidden_state = None
+        while len(input_list) > 0:
+            # Predict
+            predicted, hidden_state = self.predict_next(input=input, lengths=lengths,
+                                                        previous_hidden_state=hidden_state, use_argmax=use_argmax)
+
+            # Add predicted to unpadded.
+            predicted_list = [u + [p.item()]
+                              for u, p in zip(predicted_list, predicted)]
+
+            for idx,  (il, p) in enumerate(zip(input_list, predicted)):
+                p_v = p.item()
+                input_list[idx] = il + [p_v]
+
+                ## Assignment to maintain the order
+                if (p_v == eos_idx):
+                    predicted_list[idx] = input_list.pop(idx)
+
+                # Remove it from next input
+                batch_size = len(predicted)
+                predicted = predicted[torch.arange(batch_size) != idx, ]
+
+                # Remove the hidden state to enable next inter
+                h0 = hidden_state[0][:, torch.arange(batch_size) != idx, :]
+                c0 = hidden_state[1][:, torch.arange(batch_size) != idx, :]
+                hidden_state = (h0, c0)
+
+            # Assign for the next loop input, since tensor use reference, we won't use too much memory for it.
+            input = predicted.unsqueeze(-1)
+            lengths = torch.ones_like(lengths)
+
+        return predicted_list
+
     @staticmethod
-    def get_predicted_seq_from_output(out: torch.tensor):
-        out = F.softmax(out, dim=-1)  # (B, S, vocab_size)
-        out = torch.argmax(out, dim=-1)  # (B, S)
-        return out
-
-    def weight_init(self, m) -> None:
+    def weight_init(m) -> None:
         '''
         Initialising the weihgt
         '''
-
         if type(m) in [nn.Conv2d, nn.ConvTranspose2d, nn.Linear, nn.Conv1d]:
             nn.init.kaiming_normal_(m.weight, 0.2, nonlinearity='leaky_relu')
         elif type(m) in [nn.LSTM]:
             for name, value in m.named_parameters():
                 if 'weight' in name:
                     nn.init.xavier_normal_(value.data)
-                if 'bias'in name:
+                if 'bias' in name:
                     value.data.normal_()
 
     def num_all_params(self,) -> int:
