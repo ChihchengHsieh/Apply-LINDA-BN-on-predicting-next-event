@@ -12,8 +12,9 @@
 - [x] Save model, traing parameters, testing data after training is done.
 - [x] Load pre-trained model
 - [x] Save and load pre-processed data.
-- [ ] Add sample prediction in model.
-- [ ] Predict by input data.
+- [x] Add sample prediction in model.
+- [x] Predict by input data.
+- [ ] The prediction should be able to use dataset and dataloader
 - [ ] Read papers
 - [ ] Read LINDA-BN implementation
 - [ ] Apply LINDA-BN
