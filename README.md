@@ -15,6 +15,7 @@
 - [x] Add sample prediction in model.
 - [x] Predict by input data.
 - [ ] The prediction should be able to use dataset and dataloader
+- [ ] Create the requirement.text
 - [ ] Read papers
 - [ ] Read LINDA-BN implementation
 - [ ] Apply LINDA-BN
