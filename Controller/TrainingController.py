@@ -1,7 +1,7 @@
 import os
+import json
 import torch
 import pathlib
-import json
 
 import numpy as np
 import torch.nn as nn
@@ -19,7 +19,7 @@ from CustomExceptions.Exceptions import NotSupportedError
 from Parameters.TrainingParameters import TrainingParameters
 from Parameters.Enums import SelectableDatasets, SelectableLoss, SelectableLrScheduler, SelectableModels, SelectableOptimizer
 
-from Utils.PrintUtils import print_peforming_task
+from Utils.PrintUtils import print_big, print_peforming_task, print_taks_done, replace_print_flush
 
 
 class TrainingController:
@@ -33,8 +33,8 @@ class TrainingController:
             record_freq_in_step=TrainingParameters.run_validation_freq)
 
         # Initialise counter
-        self.epoch = 0
-        self.steps = 0
+        self.__epoch = 0
+        self.__steps = 0
         self.stop_epoch = TrainingParameters.stop_epoch
 
         self.__intialise_dataset()
@@ -134,19 +134,19 @@ class TrainingController:
 
     def train(self,):
         self.model.to(self.device)
-        while self.epoch < self.stop_epoch:
+        while self.__epoch < self.stop_epoch:
             for _, (_, train_data, train_target, train_lengths) in enumerate(self.train_data_loader):
                 train_data, train_target, train_lengths = train_data.to(
                     self.device), train_target.to(self.device), train_lengths.to(self.device)
                 train_loss, train_accuracy = self.train_step(
                     train_data, train_target, train_lengths)
-                self.steps += 1
+                self.__steps += 1
 
-                if self.steps % TrainingParameters.verbose_freq == 0:
-                    print('| Epoch [%d] | Step [%d] | lr [%.6f] | Loss: [%.4f] | Acc: [%.4f]|' % (
-                        self.epoch, self.steps, self.opt.param_groups[0]['lr'], train_loss, train_accuracy))
+                if self.__steps % TrainingParameters.verbose_freq == 0:
+                    replace_print_flush('| Epoch [%d] | Step [%d] | lr [%.6f] | Loss: [%.4f] | Acc: [%.4f]|' % (
+                        self.__epoch, self.__steps, self.opt.param_groups[0]['lr'], train_loss, train_accuracy))
 
-                if self.steps > 0 and self.steps % TrainingParameters.run_validation_freq == 0:
+                if self.__steps > 0 and self.__steps % TrainingParameters.run_validation_freq == 0:
                     print_peforming_task("Validation")
                     validation_loss, validation_accuracy = self.perform_eval_on_dataloader(
                         self.validation_data_loader)
@@ -158,8 +158,9 @@ class TrainingController:
                     )
                     self.record.plot_records()
 
-            self.epoch += 1
+            self.__epoch += 1
 
+        print_taks_done("Training")
         print_peforming_task("Testing")
         self.perform_eval_on_dataloader(self.test_data_loader)
 
@@ -222,11 +223,9 @@ class TrainingController:
         mean_loss = (torch.tensor(all_loss) *
                      torch.tensor(all_batch_size)).sum() / len(dataloader.dataset)
 
-        print(
-            "=================================================" + "\n" +
-            "| Evaluation result | Accuracy [%.4f] | Loss [%.4f]" % (
-                mean_accuracy, mean_loss) + "\n"
-            "================================================="
+        print_big(
+            "Evaluation result | Accuracy [%.4f] | Loss [%.4f]" % (
+                mean_accuracy, mean_loss)
         )
         return mean_loss.item(), mean_accuracy.item()
 
@@ -263,26 +262,18 @@ class TrainingController:
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.opt.state_dict(),
             'scheduler_state_dict': self.scheduler.state_dict(),
-            'epoch': self.epoch,
-            'steps': self.steps,
+            'epoch': self.__epoch,
+            'steps': self.__steps,
         }, model_saving_path)
 
-        print(
-            "============================"+"\n" +
-            "| Model saved successfully |" + "\n" +
-            "============================"
-        )
-
-        print(
-            "============================"+"\n" +
-            "| Model saved folder: %s " % (saving_folder_path) + "\n" +
-            "============================"
+        print_big(
+            "Model saved successfully to: %s " % (saving_folder_path)
         )
 
     def load_trained_model(self, folder_path: str, load_optimizer: bool):
-        figure_loading_path = os.path.join(
+        records_loading_path = os.path.join(
             folder_path, TrainingRecord.records_save_file_name)
-        self.record.load_records(figure_loading_path)
+        self.record.load_records(records_loading_path)
 
         # Load parameters (Parameters is needed to load model and optimzers)
         parameters_loading_path = os.path.join(
@@ -305,13 +296,11 @@ class TrainingController:
             self.opt.load_state_dict(checkpoint['optimizer_state_dict'])
             self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
 
-        self.epoch = checkpoint['epoch']
-        self.steps = checkpoint['steps']
+        self.__epoch = checkpoint['epoch']
+        self.__steps = checkpoint['steps']
 
-        print(
-            "============================="+"\n" +
-            "| Model loaded successfully |" + "\n" +
-            "============================="
+        print_big(
+            "Model loaded successfully from: %s " % (folder_path)
         )
 
     def __buid_model_with_parameters(self, parameters):
@@ -353,9 +342,3 @@ class TrainingController:
         else:
             raise NotSupportedError(
                 "Learning rate scheduler you selected is not supported")
-
-    def reset_epoch(self):
-        self.epoch = 0
-
-    def reset_steps(self):
-        self.steps = 0

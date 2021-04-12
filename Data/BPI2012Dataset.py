@@ -1,3 +1,4 @@
+from Utils.PrintUtils import print_big
 from CustomExceptions.Exceptions import NotSupportedError
 from json import load
 from typing import Iterable, Tuple, Union
@@ -196,10 +197,8 @@ class BPI2012Dataset(Dataset):
         with open(vocab_dict_path, 'w') as output_file:
             json.dump(self.__vocab_dict, output_file, indent='\t')
 
-        print(
-            "========================================"+"\n" +
-            "| Preprocessed data saved successfully |" + "\n" +
-            "========================================"
+        print_big(
+            "Preprocessed data saved successfully"
         )
 
     def load_preprocessed_data(self, preprocessed_folder_path: str, preprocessed_df_type: PreprocessedDfType):
@@ -215,11 +214,30 @@ class BPI2012Dataset(Dataset):
         with open(vocab_dict_path, 'r') as output_file:
             self.__vocab_dict = json.load(output_file)
 
-        print(
-            "========================================="+"\n" +
-            "| Preprocessed data loaded successfully |" + "\n" +
-            "========================================="
+        print_big(
+            "Preprocessed data loaded successfully"
         )
+
+    @staticmethod
+    def tranform_to_input_data_from_seq_idx_with_caseid(caseids: list[str], seq_list: list[list[int]]):
+        seq_lens = np.array([len(s)for s in seq_list])
+        sorted_len_index = np.flip(np.argsort(seq_lens))
+        sorted_seq_lens = [seq_lens[idx] for idx in sorted_len_index]
+        sorted_seq_list = [torch.tensor(seq_list[idx])
+                           for idx in sorted_len_index]
+        sorted_caseids = [caseids[i] for i in sorted_len_index]
+
+        return sorted_caseids, pad_sequence(sorted_seq_list, batch_first=True, padding_value=0), torch.tensor(sorted_seq_lens)
+
+    @staticmethod
+    def tranform_to_input_data_from_seq_idx(seq_list: list[list[int]]):
+        seq_lens = np.array([len(s)for s in seq_list])
+        sorted_len_index = np.flip(np.argsort(seq_lens))
+        sorted_seq_lens = [seq_lens[idx] for idx in sorted_len_index]
+        sorted_seq_list = [torch.tensor(seq_list[idx])
+                           for idx in sorted_len_index]
+
+        return pad_sequence(sorted_seq_list, batch_first=True, padding_value=0), torch.tensor(sorted_seq_lens)
 
     @staticmethod
     def collate_fn(data: list[pd.Series]) -> Iterable[Union[np.ndarray, torch.Tensor, torch.Tensor, np.ndarray]]:
@@ -229,22 +247,27 @@ class BPI2012Dataset(Dataset):
         seq_list = list(seq_list)
 
         # Get sorting index
-        se_lens_before_splitting = np.array([len(s)for s in seq_list])
-        sorted_len_index = np.flip(np.argsort(se_lens_before_splitting))
+        seq_lens_before_splitting = np.array([len(s)for s in seq_list])
+        sorted_len_index = np.flip(np.argsort(seq_lens_before_splitting))
 
         # Sort caseids and traces
-        sorted_seq_list = [seq_list[idx] for idx in sorted_len_index]
+        sorted_seq_list = [torch.tensor(seq_list[idx])
+                           for idx in sorted_len_index]
         sorted_case_id = np.array(caseid_list)[sorted_len_index]
 
         # Build training and test seq
-        data_seq_list = [li[:-1] for li in sorted_seq_list] # it should remove all the EOS to form a training set
-        target_seq_list = [li[1:] for li in sorted_seq_list] # it should remove all the SOS to form a testing set
+        # it should remove all the EOS to form a training set
+        data_seq_list = [li[:-1] for li in sorted_seq_list]
+        # it should remove all the SOS to form a testing set
+        target_seq_list = [li[1:] for li in sorted_seq_list]
 
         # Get lengths
         data_seq_length = [len(l) for l in data_seq_list]
 
-        # Pad data and target 
-        padded_data = pad_sequence(data_seq_list, batch_first=True)
-        padded_target = pad_sequence(target_seq_list, batch_first= True)
+        # Pad data and target
+        padded_data = pad_sequence(
+            data_seq_list, batch_first=True,  padding_value=0)
+        padded_target = pad_sequence(
+            target_seq_list, batch_first=True, padding_value=0)
 
         return sorted_case_id, padded_data, padded_target, torch.tensor(data_seq_length)

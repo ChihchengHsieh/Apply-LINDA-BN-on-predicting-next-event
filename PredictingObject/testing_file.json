@@ -1,0 +1,13 @@
+{
+    "1": [
+        "<SOS>",
+        "A_ACCEPTED_COMPLETE",
+        "A_DECLINED_COMPLETE"
+    ],
+    "2": [
+        "<SOS>",
+        "O_CREATED_COMPLETE",
+        "W_Beoordelen fraude_COMPLETE",
+        "W_Nabellen incomplete dossiers_SCHEDULE"
+    ]
+}

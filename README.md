@@ -14,7 +14,8 @@
 - [x] Save and load pre-processed data.
 - [x] Add sample prediction in model.
 - [x] Predict by input data.
-- [ ] The prediction should be able to use dataset and dataloader
+- [x] The prediction should be able to use dataset and dataloader
+- [ ] Repair the argmax will cause infiite <PAD> 
 - [ ] Create the requirement.text
 - [ ] Read papers
 - [ ] Read LINDA-BN implementation

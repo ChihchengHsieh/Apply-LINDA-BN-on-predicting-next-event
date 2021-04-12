@@ -5,6 +5,7 @@ import json
 class TrainingRecord:
     records_save_file_name = "records.json"
     figure_save_file_name = "plot.png"
+
     def __init__(self, record_freq_in_step: int):
         plt.ion()
 
@@ -13,6 +14,7 @@ class TrainingRecord:
         self.validation_acuuracy_records: list[float] = []
         self.validation_loss_records: list[float] = []
         self.record_freq_in_step: int = record_freq_in_step
+
         self.fig = plt.figure(figsize=(20, 10), dpi=80)
 
     def record_training_info(self, train_accuracy: float, train_loss: float, validation_accuracy: float, validation_loss: float, ):
@@ -35,7 +37,7 @@ class TrainingRecord:
         plt.subplot(212)
         self.plot_accuracy()
 
-        plt.tight_layout()
+        # plt.tight_layout()
 
     def plot_loss(self):
         plt.plot(self.train_loss_records, marker='o', label='Training loss')

@@ -98,7 +98,7 @@ class BaselineLSTMModel(nn.Module):
 
         # Initialise hidden state
         hidden_state = None
-        for _ in range(n):
+        for i in range(n):
             # Predict
             predicted, hidden_state = self.predict_next(input=input, lengths=lengths,
                                                         previous_hidden_state=hidden_state, use_argmax=use_argmax)
@@ -117,20 +117,16 @@ class BaselineLSTMModel(nn.Module):
         # List for input data
         input_list = [[i.item() for i in l if i != 0] for l in input]
 
-        print('Total cases: %d' % (len(input_list)))
-
         # List that prediction has been finished.
         predicted_list = [None] * len(input_list)
 
         # Initialise hidden state
         hidden_state = None
         while len(input_list) > 0:
-            print("Before feeding")
-            print(input)
             # Predict
             predicted, hidden_state = self.predict_next(input=input, lengths=lengths,
                                                         previous_hidden_state=hidden_state, use_argmax=use_argmax)
-            
+
             # Check if it's 0-d tensor
             if (predicted.size() == ()):
                 predicted = predicted.unsqueeze(0)
@@ -141,8 +137,6 @@ class BaselineLSTMModel(nn.Module):
                 input_list[idx] = il + [p_v]
 
                 if (p_v == eos_idx):
-                    print("Remain cases at start : %d" % (len(input_list)))
-                    print("Remain predicted at start: %d" % (len(predicted)))
                     # Create index mapper (Mapping the input_list  to predicted_list)
                     idx_mapper = [idx for idx, pl in enumerate(
                         predicted_list) if pl is None]
@@ -162,9 +156,6 @@ class BaselineLSTMModel(nn.Module):
                     h0 = hidden_state[0][:, torch.arange(batch_size) != idx, :]
                     c0 = hidden_state[1][:, torch.arange(batch_size) != idx, :]
                     hidden_state = (h0, c0)
-
-                    print("Remain cases: %d" % (len(input_list)))
-                    print("Remain predicted %d" % (len(predicted)))
 
                     if (len(predicted) == 0 and len(input_list) == 0):
                         break
@@ -191,6 +182,6 @@ class BaselineLSTMModel(nn.Module):
 
     def num_all_params(self,) -> int:
         '''
-        Print how many parameters in the model
+        return how many parameters in the model
         '''
         return sum([param.nelement() for param in self.parameters()])
