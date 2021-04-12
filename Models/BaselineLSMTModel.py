@@ -73,6 +73,7 @@ class BaselineLSTMModel(nn.Module):
         return out, (h_out, c_out)
 
     def predict_next(self, input: torch.tensor, lengths: torch.tensor = None, previous_hidden_state: Tuple[torch.tensor, torch.tensor] = None, use_argmax: bool = False):
+        self.eval()
         batch_size = input.size(0)  # (B, S)
 
         out, hidden_out = self.forward(
@@ -113,37 +114,60 @@ class BaselineLSTMModel(nn.Module):
         return predicted_list
 
     def predict_next_till_eos(self, input: torch.tensor, lengths: torch.tensor, eos_idx: int, use_argmax: bool = False):
-        # Unpadded the input
+        # List for input data
         input_list = [[i.item() for i in l if i != 0] for l in input]
+
+        print('Total cases: %d' % (len(input_list)))
+
+        # List that prediction has been finished.
         predicted_list = [None] * len(input_list)
 
         # Initialise hidden state
         hidden_state = None
         while len(input_list) > 0:
+            print("Before feeding")
+            print(input)
             # Predict
             predicted, hidden_state = self.predict_next(input=input, lengths=lengths,
                                                         previous_hidden_state=hidden_state, use_argmax=use_argmax)
-
-            # Add predicted to unpadded.
-            predicted_list = [u + [p.item()]
-                              for u, p in zip(predicted_list, predicted)]
+            
+            # Check if it's 0-d tensor
+            if (predicted.size() == ()):
+                predicted = predicted.unsqueeze(0)
 
             for idx,  (il, p) in enumerate(zip(input_list, predicted)):
+                # Append the predicted value
                 p_v = p.item()
                 input_list[idx] = il + [p_v]
 
-                ## Assignment to maintain the order
                 if (p_v == eos_idx):
-                    predicted_list[idx] = input_list.pop(idx)
+                    print("Remain cases at start : %d" % (len(input_list)))
+                    print("Remain predicted at start: %d" % (len(predicted)))
+                    # Create index mapper (Mapping the input_list  to predicted_list)
+                    idx_mapper = [idx for idx, pl in enumerate(
+                        predicted_list) if pl is None]
 
-                # Remove it from next input
-                batch_size = len(predicted)
-                predicted = predicted[torch.arange(batch_size) != idx, ]
+                    # Assign to predicted_list (Remove from input list)
+                    idx_in_predicted_list = idx_mapper[idx]
+                    predicted_list[idx_in_predicted_list] = input_list.pop(idx)
 
-                # Remove the hidden state to enable next inter
-                h0 = hidden_state[0][:, torch.arange(batch_size) != idx, :]
-                c0 = hidden_state[1][:, torch.arange(batch_size) != idx, :]
-                hidden_state = (h0, c0)
+                    batch_size = len(predicted)
+                    # Remove instance from the lengths
+                    lengths = lengths[torch.arange(batch_size) != idx]
+
+                    # Remove instance from next input
+                    predicted = predicted[torch.arange(batch_size) != idx, ]
+
+                    # Remove the hidden state to enable next inter
+                    h0 = hidden_state[0][:, torch.arange(batch_size) != idx, :]
+                    c0 = hidden_state[1][:, torch.arange(batch_size) != idx, :]
+                    hidden_state = (h0, c0)
+
+                    print("Remain cases: %d" % (len(input_list)))
+                    print("Remain predicted %d" % (len(predicted)))
+
+                    if (len(predicted) == 0 and len(input_list) == 0):
+                        break
 
             # Assign for the next loop input, since tensor use reference, we won't use too much memory for it.
             input = predicted.unsqueeze(-1)
