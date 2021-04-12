@@ -1,0 +1,32 @@
+{
+	"bpi_2012_path": "../Data/event_logs/BPI_Challenge_2012.xes",
+	"preprocessed_bpi_2012_folder_path": "../Data/preprocessed/BPI_Challenge_2012",
+	"preprocessed_df_type": "PreprocessedDfType.HDF5",
+	"load_model_folder_path": "SavedModels/2021-04-13 01:07:49.273685",
+	"load_optimizer": true,
+	"dataset": "SelectableDatasets.BPI2012",
+	"model": "SelectableModels.BaseLineLSTMModel",
+	"optimizer": "SelectableOptimizer.Adam",
+	"loss": "SelectableLoss.CrossEntropy",
+	"stop_epoch": 2,
+	"batch_size": 32,
+	"train_test_split_portion": [
+		0.8,
+		0.1
+	],
+	"verbose_freq": 20,
+	"run_validation_freq": 40,
+	"OptimizerParameters": {
+		"learning_rate": 0.005,
+		"l2": 0.1,
+		"scheduler": "SelectableLrScheduler.StepScheduler",
+		"lr_scheduler_step": 200,
+		"lr_scheduler_gamma": 0.85
+	},
+	"BaselineLSTMModelParameters": {
+		"embedding_dim": 16,
+		"lstm_hidden": 32,
+		"dropout": 0.1,
+		"num_lstm_layers": 1
+	}
+}
