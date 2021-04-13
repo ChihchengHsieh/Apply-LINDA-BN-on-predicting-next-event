@@ -7,11 +7,17 @@ import sys
 def main(argv):
     path = argv[0]
 
-    ## Determine if using argmax or sample.
+    # Determine if using argmax or sample.
     if ("--argmax" in argv):
         use_argmax = True
     else:
         use_argmax = False
+
+    # Determine if show loaded model info before starting.
+    if ("--model-info" in argv):
+        show_model_info = True
+    else:
+        show_model_info = False
 
     # Determine if only run certain steps.
     n_list = [i for i in argv if i.startswith("--n=")]
@@ -21,8 +27,14 @@ def main(argv):
         n_steps = None
 
     predictor = PredictingController()
+
+    # Show loaded model info
+    if show_model_info:
+        predictor.show_model_info()
+
     predictor.load_json_for_predicting(
         path, n_steps=n_steps, use_argmax=use_argmax)
+
     input("Press any button to end the session...")
 
 

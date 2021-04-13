@@ -1,4 +1,7 @@
+from Parameters.PredictingParameters import PredictingParameters
+from Data.PredictingJsonDataset import PredictingJsonDataset
 import os
+import sys
 import json
 import torch
 import pathlib
@@ -11,7 +14,7 @@ import torch.nn.functional as F
 from typing import Tuple
 from datetime import datetime
 from Utils.Constants import Constants
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, dataloader
 from Data.BPI2012Dataset import BPI2012Dataset
 from Models.BaselineLSMTModel import BaselineLSTMModel
 from Controller.TrainingRecord import TrainingRecord
@@ -19,7 +22,7 @@ from CustomExceptions.Exceptions import NotSupportedError
 from Parameters.TrainingParameters import TrainingParameters
 from Parameters.Enums import SelectableDatasets, SelectableLoss, SelectableLrScheduler, SelectableModels, SelectableOptimizer
 
-from Utils.PrintUtils import print_big, print_peforming_task, print_taks_done, replace_print_flush
+from Utils.PrintUtils import print_big, print_peforming_task, print_percentages, print_taks_done, replace_print_flush
 
 
 class TrainingController:
@@ -27,6 +30,8 @@ class TrainingController:
         # determine the device
         self.device = torch.device(
             'cuda:0' if torch.cuda.is_available() else 'cpu')
+        
+        print_big("Running on" %  (self.device))
 
         # Initialise records
         self.record = TrainingRecord(
@@ -127,7 +132,10 @@ class TrainingController:
     def __initialise_loss_fn(self):
         # Setting up loss
         if (TrainingParameters.loss == SelectableLoss.CrossEntropy):
-            self.loss = nn.CrossEntropyLoss()
+            self.loss = nn.CrossEntropyLoss(
+                size_average=True,
+                reduction="mean", ignore_index=self.dataset.padding_index()
+            )
         else:
             raise NotSupportedError(
                 "Loss function you selected is not supported")
@@ -196,8 +204,10 @@ class TrainingController:
 
         loss = self.loss(out.transpose(2, 1), target)
 
-        accuracy = torch.mean(
-            (torch.argmax(F.softmax(out, dim=-1), dim=-1) == target).float())
+        # Mask the padding
+
+        accuracy = torch.mean(torch.masked_select(
+            (torch.argmax(out, dim=-1) == target), target > 0).float())
 
         return loss, accuracy
 
@@ -342,3 +352,110 @@ class TrainingController:
         else:
             raise NotSupportedError(
                 "Learning rate scheduler you selected is not supported")
+
+    def show_model_info(self):
+
+        print_big("Model Structure")
+        sys.stdout.write(str(self.model))
+
+        print_big(
+            "Loaded model has {%d} parameters" % (self.model.num_all_params())
+        )
+
+        print_big(
+            "Loaded model has been trained for [%d] steps, [%d] epochs" % (
+                self.steps, self.epoch)
+        )
+
+        self.record.plot_records()
+
+    def perform_eval_on_dataset(self):
+        print_peforming_task("Evaluation")
+        temp_dataloader = DataLoader(
+            self.dataset, batch_size=PredictingParameters.batch_size, shuffle=True, collate_fn=self.dataset.collate_fn,
+            # num_workers=4,
+            # worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed()) % (2**32-1)),
+        )
+        self.perform_eval_on_dataloader(temp_dataloader)
+
+    def load_json_for_predicting(self, path: str,  n_steps: int = None, use_argmax=False):
+
+        print_peforming_task("Dataset Loading")
+        # Expect it to be a 2D list contain list of traces.
+        p_dataset = PredictingJsonDataset(
+            self.dataset, predicting_file_path=path)
+
+        p_loader = DataLoader(
+            p_dataset, batch_size=PredictingParameters.batch_size, shuffle=False, collate_fn=p_dataset.collate_fn,
+            # num_workers=4,
+            # worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed()) % (2**32-1)),
+        )
+
+        print_taks_done("Dataset Loading")
+
+        predicted_dict = {}
+
+        print_peforming_task("Predicting")
+
+        for _, (caseids, data, lengths) in enumerate(p_loader):
+
+            predicted_list = self.predict(
+                data=data, lengths=lengths, n_steps=n_steps, use_argmax=use_argmax)
+
+            for k, v in zip(caseids, predicted_list):
+                predicted_dict[k] = self.dataset.list_of_index_to_vocab(v)
+
+            sys.stdout.write('\r')
+            print_percentages(prefix="Predicting cases", percentage=len(
+                predicted_dict)/len(p_dataset))
+            sys.stdout.flush()
+
+        print_taks_done("Predicting")
+
+        # Save as result json
+        saving_path = pathlib.Path(path)
+        saving_file_name = pathlib.Path(path).stem + "_result.json"
+        saving_dest = os.path.join(saving_path.parent, saving_file_name)
+        with open(saving_dest, "w") as output_file:
+            json.dump(predicted_dict, output_file, indent="\t")
+
+        print_big(
+            "Predition result has been save to: %s" % (saving_dest)
+        )
+
+    def predicting_from_list_of_vacab_trace(self, data: list[list[str]], n_steps: int = None, use_argmax=False):
+
+        print_peforming_task("Predicting")
+
+        data = [self.dataset.list_of_vocab_to_index(l) for l in data]
+
+        predicted_list = self.predicting_from_list_of_idx_trace(
+            data=data, n_steps=n_steps, use_argmax=use_argmax)
+
+        predicted_list = [self.dataset.list_of_index_to_vocab(
+            l) for l in predicted_list]
+
+        print_taks_done("Predicting")
+
+        return predicted_list
+
+    def predicting_from_list_of_idx_trace(self, data: list[list[str]],  n_steps: int = None, use_argmax=False):
+        data, lengths = self.dataset.tranform_to_input_data_from_seq_idx(
+            data)
+
+        predicted_list = self.predict(
+            data=data, lengths=lengths, n_steps=n_steps, use_argmax=use_argmax)
+        return predicted_list
+
+    def predict(self, data: torch.tensor, lengths: torch.tensor = None, n_steps: int = None, use_argmax=False):
+        if not n_steps is None:
+            # Predict for n steps
+            predicted_list = self.model.predict_next_n(
+                input=data, lengths=lengths, n=n_steps, use_argmax=use_argmax)
+        else:
+            # Predict till EOS
+            predicted_list = self.model.predict_next_till_eos(
+                input=data, lengths=lengths, eos_idx=self.dataset.vocab_to_index(
+                    Constants.EOS_VOCAB), use_argmax=use_argmax
+            )
+        return predicted_list

@@ -1,5 +1,7 @@
 
+from Utils.PrintUtils import replace_print_flush
 from operator import le
+from sys import stdout
 from typing import Tuple
 import torch
 import torch.nn as nn
@@ -51,9 +53,10 @@ class BaselineLSTMModel(nn.Module):
             if prev_hidden_states[1].size() != expected_previous_state_size:
                 raise Exception("The expected size from previous state is %s, the input has size %s" % (
                     str(expected_previous_state_size), str(tuple(prev_hidden_states[1].size()))))
-
+            replace_print_flush("Using input hidden")
             input_hidden_state = prev_hidden_states
         else:
+            replace_print_flush("Using default hidden")
             input_hidden_state = (self.h0.repeat(
                 1, batch_size, 1), self.c0.repeat(1, batch_size, 1))
 
@@ -69,7 +72,8 @@ class BaselineLSTMModel(nn.Module):
             out, (h_out, c_out) = self.lstm(
                 out, input_hidden_state)  # ( B, S, F)
 
-        out = self.output_net(out)  # (B, S, vocab_size)
+        out = F.softmax(self.output_net(out), dim=-1)  # (B, S, vocab_size)
+
         return out, (h_out, c_out)
 
     def predict_next(self, input: torch.tensor, lengths: torch.tensor = None, previous_hidden_state: Tuple[torch.tensor, torch.tensor] = None, use_argmax: bool = False):
@@ -84,9 +88,12 @@ class BaselineLSTMModel(nn.Module):
         # a len == 80 seq, will only have index 79 as the last output (from the 79 input)
         final_index = lengths - 1
         out = out[torch.arange(batch_size), final_index, :]  # (B, Vocab)
-        out = F.softmax(out, dim=-1)  # (B, vocab_size)
+        self.softmax_out = out
+
         if (use_argmax):
             out = torch.argmax(out, dim=-1)  # (B)
+            # TODO: Testing value, need to delete
+            self.argmax_out = out
         else:
             out = torch.multinomial(out, num_samples=1).squeeze()  # (B)
 

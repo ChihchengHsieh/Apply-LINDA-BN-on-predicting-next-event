@@ -40,7 +40,6 @@ class PredictingController:
                 "You need to specify the path to load the trained model")
 
         self.__initialise_loss_fn()
-        self.show_model_info()
 
     def __initialise_loss_fn(self):
         # Setting up loss
@@ -95,6 +94,14 @@ class PredictingController:
         )
 
     def show_model_info(self):
+
+        print_big("Model Structure")
+        sys.stdout.write(str(self.model))
+
+        print_big(
+            "Loaded model has {%d} parameters" % (self.model.num_all_params())
+        )
+
         print_big(
             "Loaded model has been trained for [%d] steps, [%d] epochs" % (
                 self.steps, self.epoch)
@@ -111,7 +118,7 @@ class PredictingController:
         loss = self.loss(out.transpose(2, 1), target)
 
         accuracy = torch.mean(
-            (torch.argmax(F.softmax(out, dim=-1), dim=-1) == target).float())
+            (torch.argmax(out, dim=-1) == target).float())
 
         return loss, accuracy
 

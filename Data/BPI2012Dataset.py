@@ -184,6 +184,9 @@ class BPI2012Dataset(Dataset):
     def load_df_from_pickle(self, path):
         self.df = pd.read_pickle(path)
 
+    def padding_index(self):
+        return self.vocab_to_index(Constants.PAD_VOCAB)
+
     def save_preprocessed_data(self, preprocessed_folder_path: str, preprocessed_df_type: PreprocessedDfType):
         if preprocessed_folder_path is None:
             raise Error("Preprocessed folder path can't be None")

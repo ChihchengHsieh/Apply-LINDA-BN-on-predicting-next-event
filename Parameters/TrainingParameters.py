@@ -19,16 +19,16 @@ class TrainingParameters(object):
     preprocessed_df_type: PreprocessedDfType = PreprocessedDfType.HDF5
 
     # Set to None to not loading pre-trained model.
-    load_model_folder_path: str = "SavedModels/2021-04-13 01:07:49.273685"
+    # load_model_folder_path: str = "SavedModels/2021-04-13 01:07:49.273685"
     # Set to None to not loading pre-trained model.
-    # load_model_folder_path: str = None
+    load_model_folder_path: str = None
     load_optimizer: bool = True
 
     dataset: SelectableDatasets = SelectableDatasets.BPI2012
     model: SelectableModels = SelectableModels.BaseLineLSTMModel
     optimizer: SelectableOptimizer = SelectableOptimizer.Adam
     loss: SelectableLoss = SelectableLoss.CrossEntropy
-    stop_epoch: int = 2
+    stop_epoch: int = 1
     batch_size: int = 32
     # Remaining will be used for validation.
     train_test_split_portion = [0.8, 0.1]
@@ -51,10 +51,10 @@ class TrainingParameters(object):
         '''
         It will be override once you have load_model
         '''
-        embedding_dim: int = 16  # 128
-        lstm_hidden: int = 32  # 256
+        embedding_dim: int = 128  # 128
+        lstm_hidden: int = 256  # 256
         dropout: float = .1
-        num_lstm_layers: int = 1  # 2
+        num_lstm_layers: int = 2  # 2
 
     @staticmethod
     def save_parameters_json__(path: str):
