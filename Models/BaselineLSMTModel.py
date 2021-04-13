@@ -25,8 +25,8 @@ class BaselineLSTMModel(nn.Module):
         )
 
         # The trainable init h0 and c0 in LSTM.
-        self.h0 = nn.Parameter(torch.randn(num_lstm_layers, 1, lstm_hidden))
-        self.c0 = nn.Parameter(torch.randn(num_lstm_layers, 1, lstm_hidden))
+        self.h0 = nn.Parameter(torch.zeros(num_lstm_layers, 1, lstm_hidden))
+        self.c0 = nn.Parameter(torch.zeros(num_lstm_layers, 1, lstm_hidden))
 
         self.apply(BaselineLSTMModel.weight_init)
 
