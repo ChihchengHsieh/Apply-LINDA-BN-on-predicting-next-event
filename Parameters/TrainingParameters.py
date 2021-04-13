@@ -39,8 +39,8 @@ class TrainingParameters(object):
         '''
         It will be override once you have load_model and load_optimizer = True
         '''
-        learning_rate: float = 0.005
-        l2: float = 0.1
+        learning_rate: float = 0.05
+        l2: float = 0.0001
 
         ## Scheduler
         scheduler: SelectableLrScheduler = SelectableLrScheduler.StepScheduler
@@ -52,10 +52,10 @@ class TrainingParameters(object):
         '''
         It will be override once you have load_model
         '''
-        embedding_dim: int = 128  # 128
-        lstm_hidden: int = 256  # 256
+        embedding_dim: int = 64  # 128
+        lstm_hidden: int = 128  # 256
         dropout: float = .1
-        num_lstm_layers: int = 2  # 2
+        num_lstm_layers: int = 1  # 2
 
     @staticmethod
     def save_parameters_json__(path: str):
