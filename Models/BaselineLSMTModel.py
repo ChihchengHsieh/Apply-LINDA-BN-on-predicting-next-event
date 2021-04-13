@@ -53,10 +53,8 @@ class BaselineLSTMModel(nn.Module):
             if prev_hidden_states[1].size() != expected_previous_state_size:
                 raise Exception("The expected size from previous state is %s, the input has size %s" % (
                     str(expected_previous_state_size), str(tuple(prev_hidden_states[1].size()))))
-            replace_print_flush("Using input hidden")
             input_hidden_state = prev_hidden_states
         else:
-            replace_print_flush("Using default hidden")
             input_hidden_state = (self.h0.repeat(
                 1, batch_size, 1), self.c0.repeat(1, batch_size, 1))
 

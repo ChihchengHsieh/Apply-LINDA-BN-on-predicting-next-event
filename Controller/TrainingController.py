@@ -31,7 +31,7 @@ class TrainingController:
         self.device = torch.device(
             'cuda:0' if torch.cuda.is_available() else 'cpu')
         
-        print_big("Running on" %  (self.device))
+        print_big("Running on %s" %  (self.device))
 
         # Initialise records
         self.record = TrainingRecord(
