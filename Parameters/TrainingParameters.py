@@ -26,7 +26,7 @@ class TrainingParameters(object):
 
     dataset: SelectableDatasets = SelectableDatasets.BPI2012
     model: SelectableModels = SelectableModels.BaseLineLSTMModel
-    optimizer: SelectableOptimizer = SelectableOptimizer.Adam
+    optimizer: SelectableOptimizer = SelectableOptimizer.SGD
     loss: SelectableLoss = SelectableLoss.CrossEntropy
     stop_epoch: int = 1
     batch_size: int = 32
@@ -46,6 +46,7 @@ class TrainingParameters(object):
         scheduler: SelectableLrScheduler = SelectableLrScheduler.StepScheduler
         lr_scheduler_step: int = 200
         lr_scheduler_gamma: float = .85
+        SGD_momentum = .9
 
     class BaselineLSTMModelParameters(object):
         '''

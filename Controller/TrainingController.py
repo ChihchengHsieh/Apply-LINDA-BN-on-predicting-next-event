@@ -30,8 +30,8 @@ class TrainingController:
         # determine the device
         self.device = torch.device(
             'cuda:0' if torch.cuda.is_available() else 'cpu')
-        
-        print_big("Running on" %  (self.device))
+
+        print_big("Running on" % (self.device))
 
         # Initialise records
         self.record = TrainingRecord(
@@ -113,6 +113,15 @@ class TrainingController:
                 lr=TrainingParameters.OptimizerParameters.learning_rate,
                 weight_decay=TrainingParameters.OptimizerParameters.l2
             )
+
+        if TrainingParameters.optimizer == SelectableOptimizer.SGD:
+            self.opt = optim.SGD(
+                self.model.parameters,
+                lr=TrainingParameters.OptimizerParameters.learning_rate,
+                weight_decay=TrainingParameters.OptimizerParameters.l2,
+                momentum=TrainingParameters.OptimizerParameters.SGD_momentum,
+            )
+
         else:
             raise NotSupportedError("Optimizer you selected is not supported")
 
@@ -335,6 +344,13 @@ class TrainingController:
                 self.model.parameters(),
                 lr=parameters["OptimizerParameters"]["learning_rate"],
                 weight_decay=parameters["OptimizerParameters"]["l2"]
+            )
+        if parameters["optimizer"] == str(SelectableOptimizer.SGD):
+            self.opt = optim.SGD(
+                self.model.parameters,
+                lr=parameters["OptimizerParameters"]["learning_rate"],
+                weight_decay=parameters["OptimizerParameters"]["l2"],
+                momentum=parameters["OptimizerParameters"]["SGD_momentum"]
             )
         else:
             raise NotSupportedError(
