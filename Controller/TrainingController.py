@@ -56,6 +56,8 @@ class TrainingController:
             self.__initialise_model()
             self.__intialise_optimizer()
 
+        self.model.to(self.device)
+
         self.__initialise_loss_fn()
 
     def __intialise_dataset(self):
@@ -115,15 +117,13 @@ class TrainingController:
                 lr=TrainingParameters.OptimizerParameters.learning_rate,
                 weight_decay=TrainingParameters.OptimizerParameters.l2
             )
-
-        if TrainingParameters.optimizer == SelectableOptimizer.SGD:
+        elif TrainingParameters.optimizer == SelectableOptimizer.SGD:
             self.opt = optim.SGD(
                 self.model.parameters(),
                 lr=TrainingParameters.OptimizerParameters.learning_rate,
                 weight_decay=TrainingParameters.OptimizerParameters.l2,
                 momentum=TrainingParameters.OptimizerParameters.SGD_momentum,
             )
-
         else:
             raise NotSupportedError("Optimizer you selected is not supported")
 
@@ -193,7 +193,6 @@ class TrainingController:
         self.opt.zero_grad()
         loss, accuracy = self.model_step(train_data, target, lengths)
         loss.backward()
-        self.plot_grad_flow(self.model.named_parameters())
         self.opt.step()
         if not self.scheduler is None:
             self.scheduler.step()
@@ -348,7 +347,7 @@ class TrainingController:
                 lr=parameters["OptimizerParameters"]["learning_rate"],
                 weight_decay=parameters["OptimizerParameters"]["l2"]
             )
-        if parameters["optimizer"] == str(SelectableOptimizer.SGD):
+        elif parameters["optimizer"] == str(SelectableOptimizer.SGD):
             self.opt = optim.SGD(
                 self.model.parameters(),
                 lr=parameters["OptimizerParameters"]["learning_rate"],
@@ -418,6 +417,7 @@ class TrainingController:
 
         for _, (caseids, data, lengths) in enumerate(p_loader):
 
+            data, lengths = data.to(self.device), lengths.to(self.device)
             predicted_list = self.predict(
                 data=data, lengths=lengths, n_steps=n_steps, use_argmax=use_argmax)
 
@@ -475,11 +475,11 @@ class TrainingController:
             # Predict till EOS
             predicted_list = self.model.predict_next_till_eos(
                 input=data, lengths=lengths, eos_idx=self.dataset.vocab_to_index(
-                    Constants.EOS_VOCAB), use_argmax=use_argmax
+                    Constants.EOS_VOCAB), use_argmax=use_argmax, max_predicted_lengths= TrainingParameters.max_eos_predicted_length
             )
         return predicted_list
 
-    def plot_grad_flow(self, named_parameters):
+    def plot_grad_flow(self):
         '''Plots the gradients flowing through different layers in the net during training.
         Can be used for checking for possible gradient vanishing / exploding problems.
 
@@ -489,7 +489,7 @@ class TrainingController:
         ave_grads = []
         max_grads = []
         layers = []
-        for n, p in named_parameters:
+        for n, p in self.model.named_parameters():
             if(p.requires_grad) and ("bias" not in n):
                 layers.append(n)
                 ave_grads.append(p.grad.abs().mean())

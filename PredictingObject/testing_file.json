@@ -1,13 +1,25 @@
 {
-    "1": [
-        "<SOS>",
+    "1": ["<SOS>",
+        "A_SUBMITTED_COMPLETE",
+        "A_PARTLYSUBMITTED_COMPLETE",
+        "A_PREACCEPTED_COMPLETE",
+        "W_Completeren aanvraag_SCHEDULE",
+        "W_Completeren aanvraag_START",
         "A_ACCEPTED_COMPLETE",
-        "A_DECLINED_COMPLETE"
+        "O_SELECTED_COMPLETE",
+        "A_FINALIZED_COMPLETE"
     ],
-    "2": [
-        "<SOS>",
-        "O_CREATED_COMPLETE",
-        "W_Beoordelen fraude_COMPLETE",
-        "W_Nabellen incomplete dossiers_SCHEDULE"
-    ]
+	"2":[
+		"<SOS>",
+		"A_SUBMITTED_COMPLETE",
+		"A_PARTLYSUBMITTED_COMPLETE",
+		"A_PREACCEPTED_COMPLETE",
+		"W_Completeren aanvraag_SCHEDULE",
+		"W_Completeren aanvraag_START",
+		"A_ACCEPTED_COMPLETE",
+		"O_SELECTED_COMPLETE",
+		"A_FINALIZED_COMPLETE",
+		"O_CREATED_COMPLETE",
+		"O_SENT_COMPLETE"
+	]
 }

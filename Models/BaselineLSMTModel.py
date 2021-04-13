@@ -20,7 +20,11 @@ class BaselineLSTMModel(nn.Module):
         self.lstm = nn.LSTM(embedding_dim, lstm_hidden, batch_first=True,
                             dropout=dropout, num_layers=num_lstm_layers)
 
+        self.batchnorm = nn.BatchNorm1d(num_features= lstm_hidden)
+
         self.output_net = nn.Sequential(
+            nn.LeakyReLU(inplace=True),
+            nn.Dropout(dropout),
             nn.Linear(lstm_hidden, vocab_size),
         )
 
@@ -62,13 +66,15 @@ class BaselineLSTMModel(nn.Module):
         out = self.emb(input)  # ( B, S, F )
 
         if not lengths is None:
-            out = pack_padded_sequence(out, lengths=lengths, batch_first=True)
+            out = pack_padded_sequence(out, lengths=lengths.cpu(), batch_first=True)
             out, (h_out, c_out) = self.lstm(
                 out, input_hidden_state)  # ( B, S, F)
             out, _ = pad_packed_sequence(out, batch_first=True)
         else:
             out, (h_out, c_out) = self.lstm(
                 out, input_hidden_state)  # ( B, S, F)
+
+        out =  self.batchnorm(out.transpose(2,1)).transpose(2,1) # (B, F, S)
 
         out = F.softmax(self.output_net(out), dim=-1)  # (B, S, vocab_size)
 
@@ -118,7 +124,7 @@ class BaselineLSTMModel(nn.Module):
 
         return predicted_list
 
-    def predict_next_till_eos(self, input: torch.tensor, lengths: torch.tensor, eos_idx: int, use_argmax: bool = False):
+    def predict_next_till_eos(self, input: torch.tensor, lengths: torch.tensor, eos_idx: int, use_argmax: bool = False, max_predicted_lengths= 1000):
         # List for input data
         input_list = [[i.item() for i in l if i != 0] for l in input]
 
@@ -141,7 +147,7 @@ class BaselineLSTMModel(nn.Module):
                 p_v = p.item()
                 input_list[idx] = il + [p_v]
 
-                if (p_v == eos_idx):
+                if (p_v == eos_idx or len(input_list[idx])> max_predicted_lengths):
                     # Create index mapper (Mapping the input_list  to predicted_list)
                     idx_mapper = [idx for idx, pl in enumerate(
                         predicted_list) if pl is None]

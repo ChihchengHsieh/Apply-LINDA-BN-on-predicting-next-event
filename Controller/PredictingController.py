@@ -5,7 +5,6 @@ import torch
 import pathlib
 import sys
 
-import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -19,7 +18,7 @@ from CustomExceptions.Exceptions import NotSupportedError
 from Parameters.PredictingParameters import PredictingParameters
 from Parameters.Enums import SelectableDatasets, SelectableLoss, SelectableModels
 
-from Utils.PrintUtils import print_big, print_peforming_task, print_percentages, print_taks_done, replace_print_flush
+from Utils.PrintUtils import print_big, print_peforming_task, print_percentages, print_taks_done
 
 
 class PredictingController:
@@ -38,6 +37,8 @@ class PredictingController:
         else:
             raise Exception(
                 "You need to specify the path to load the trained model")
+
+        self.model.to(self.device)
 
         self.__initialise_loss_fn()
 
@@ -194,6 +195,8 @@ class PredictingController:
 
         for _, (caseids, data, lengths) in enumerate(p_loader):
 
+            data, lengths =  data.to(self.device), lengths.to(self.device)
+
             predicted_list = self.predict(
                 data=data, lengths=lengths, n_steps=n_steps, use_argmax=use_argmax)
 
@@ -251,6 +254,6 @@ class PredictingController:
             # Predict till EOS
             predicted_list = self.model.predict_next_till_eos(
                 input=data, lengths=lengths, eos_idx=self.dataset.vocab_to_index(
-                    Constants.EOS_VOCAB), use_argmax=use_argmax
+                    Constants.EOS_VOCAB), use_argmax=use_argmax, max_predicted_lengths= PredictingParameters.max_eos_predicted_length
             )
         return predicted_list

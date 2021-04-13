@@ -6,9 +6,21 @@ from Controller.TrainingController import TrainingController
 import sys
 
 def main(argv):
+     # Determine if show loaded model info before starting.
+    if ("--model-arch" in argv):
+        show_model_info = True
+    else:
+        show_model_info = False
+
     trainer = TrainingController()
+
+    # Show loaded model arch before training 
+    if show_model_info:
+        sys.stdout.write(str(trainer.model))
+
     trainer.train()
     trainer.save_training_result(__file__)
+        
     input("Press any button to end the session...")
 
 if __name__ == "__main__":
