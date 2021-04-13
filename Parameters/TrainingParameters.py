@@ -14,8 +14,8 @@ class TrainingParameters(object):
     # Parameters for training
     ######################################
 
-    bpi_2012_path: str = '../Data/event_logs/BPI_Challenge_2012.xes'
-    preprocessed_bpi_2012_folder_path = '../Data/preprocessed/BPI_Challenge_2012'
+    bpi_2012_path: str = './datasets/event_logs/BPI_Challenge_2012.xes'
+    preprocessed_bpi_2012_folder_path = './datasets/preprocessed/BPI_Challenge_2012'
     preprocessed_df_type: PreprocessedDfType = PreprocessedDfType.HDF5
 
     # Set to None to not loading pre-trained model.

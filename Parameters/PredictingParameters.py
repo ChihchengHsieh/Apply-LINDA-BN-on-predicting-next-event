@@ -13,8 +13,8 @@ class PredictingParameters(object):
     # Parameters for predicting
     ######################################
 
-    bpi_2012_path: str = '../Data/event_logs/BPI_Challenge_2012.xes'
-    preprocessed_bpi_2012_folder_path = '../Data/preprocessed/BPI_Challenge_2012'
+    bpi_2012_path: str = '../datasets/event_logs/BPI_Challenge_2012.xes'
+    preprocessed_bpi_2012_folder_path = '../datasets/preprocessed/BPI_Challenge_2012'
     preprocessed_df_type: PreprocessedDfType = PreprocessedDfType.HDF5
 
     load_model_folder_path: str = "SavedModels/2021-04-13 01:07:49.273685"  # Must set
