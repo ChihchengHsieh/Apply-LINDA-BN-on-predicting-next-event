@@ -1,4 +1,4 @@
-from Parameters.Enums import PreprocessedDfType, SelectableDatasets, SelectableLoss, SelectableModels, 
+from Parameters.Enums import PreprocessedDfType, SelectableLoss, SelectableModels
 
 
 class PredictingParameters(object):
@@ -16,11 +16,13 @@ class PredictingParameters(object):
     preprocessed_bpi_2012_folder_path = './datasets/preprocessed/BPI_Challenge_2012'
     preprocessed_df_type: PreprocessedDfType = PreprocessedDfType.HDF5
 
-    load_model_folder_path: str = "./SavedModels/2021-04-14 01:25:51.801160"  # Must set
+    dataset_split_seed = 12345
+    train_test_split_portion = [0.8, 0.1]
+
+    load_model_folder_path: str = "./SavedModels/0.8534_2021-04-14 12:07:55.613864"  # Must set
 
     max_eos_predicted_length = 50
 
-    standard_dataset: SelectableDatasets = SelectableDatasets.BPI2012
     model: SelectableModels = SelectableModels.BaseLineLSTMModel
     # Loss function for measuring the loss on evaluation
     loss: SelectableLoss = SelectableLoss.CrossEntropy

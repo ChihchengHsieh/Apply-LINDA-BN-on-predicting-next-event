@@ -95,6 +95,7 @@ class BPI2012Dataset(Dataset):
             })
 
         self.df: pd.DataFrame = pd.DataFrame(final_df_data)
+        self.df.sort_values("caseid", inplace= True)
         self.__vocab_dict: dict(str, int) = vocab_dict
 
     def longest_trace_len(self) -> int:

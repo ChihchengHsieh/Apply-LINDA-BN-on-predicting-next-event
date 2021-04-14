@@ -7,7 +7,7 @@ import sys
 
 def main(argv):
      # Determine if show loaded model info before starting.
-    if ("--model-arch" in argv):
+    if ("--model-info" in argv):
         show_model_info = True
     else:
         show_model_info = False
@@ -16,7 +16,7 @@ def main(argv):
 
     # Show loaded model arch before training 
     if show_model_info:
-        sys.stdout.write(str(trainer.model))
+        trainer.show_model_info()
 
     trainer.train()
     trainer.save_training_result(__file__)
