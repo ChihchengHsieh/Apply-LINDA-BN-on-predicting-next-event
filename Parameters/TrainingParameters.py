@@ -38,8 +38,7 @@ class TrainingParameters(object):
     loss: SelectableLoss = SelectableLoss.CrossEntropy
     stop_epoch: int = 100
     batch_size: int = 64
-    # Remaining will be used for validation.
-    train_test_split_portion = [0.8, 0.1]
+    train_test_split_portion = [0.8, 0.1]  # Remaining will be used for validation.
     verbose_freq: int = 100  # in step
     run_validation_freq: int = 200  # in step
 
