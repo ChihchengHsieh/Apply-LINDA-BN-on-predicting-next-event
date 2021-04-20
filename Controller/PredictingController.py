@@ -389,7 +389,7 @@ class PredictingController:
         return predicted_list
 
     def predicting_from_list_of_idx_trace(
-        self, data: list[list[str]], n_steps: int = None, use_argmax=False
+        self, data: list[list[int]], n_steps: int = None, use_argmax=False
     ):
         data, lengths = self.dataset.tranform_to_input_data_from_seq_idx(data)
 

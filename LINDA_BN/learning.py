@@ -63,7 +63,6 @@ import pylab as pl
 from pylab import savefig
 plt.style.use('seaborn-deep')
 
-
 # RECALL -----------------------------------------------------------------------------
 #
 def recall_m(y_true, y_pred):
