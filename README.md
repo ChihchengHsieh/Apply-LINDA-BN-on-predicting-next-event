@@ -38,5 +38,20 @@ Prediction => Concat the output (Sample or argmax) for the next prediction, then
 
 
 
+#### Installing driver for graphics:
 
 
+##### To show the availible drivers:
+```
+ubuntu-drivers devices
+```
+
+##### Install the recommended:
+```
+sudo ubuntu-drivers autoinstall
+```
+
+##### Install specific driver:
+```
+sudo apt install nvidia-340
+```
