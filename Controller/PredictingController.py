@@ -147,7 +147,7 @@ class PredictingController:
         # Load model
         model_loading_path = os.path.join(
             folder_path, self.model.model_save_file_name)
-        checkpoint = torch.load(model_loading_path)
+        checkpoint = torch.load(model_loading_path, map_location=torch.device(self.device))
         self.model.load_state_dict(checkpoint["model_state_dict"])
 
         self.epoch = checkpoint["epoch"]
