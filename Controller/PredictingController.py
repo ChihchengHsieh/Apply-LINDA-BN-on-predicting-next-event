@@ -1,3 +1,4 @@
+from numpy.lib.function_base import select
 from Data.PredictingJsonDataset import PredictingJsonDataset
 import os
 import json
@@ -5,8 +6,14 @@ import torch
 import pathlib
 import sys
 
+import seaborn as sn
+import matplotlib.pyplot as plt
+import numpy as np
+
 import torch.nn as nn
 import torch.nn.functional as F
+import pandas as pd
+from sklearn.metrics import confusion_matrix, classification_report
 
 from typing import Tuple
 from Utils.Constants import Constants
@@ -147,7 +154,8 @@ class PredictingController:
         # Load model
         model_loading_path = os.path.join(
             folder_path, self.model.model_save_file_name)
-        checkpoint = torch.load(model_loading_path, map_location=torch.device(self.device))
+        checkpoint = torch.load(
+            model_loading_path, map_location=torch.device(self.device))
         self.model.load_state_dict(checkpoint["model_state_dict"])
 
         self.epoch = checkpoint["epoch"]
@@ -172,59 +180,85 @@ class PredictingController:
 
     def model_step(
         self, input: torch.tensor, target: torch.tensor, lengths: torch.tensor
-    ) -> Tuple[torch.tensor, torch.tensor]:
+    ) -> Tuple[torch.tensor, torch.tensor, torch.tensor, torch.tensor]:
         """
         Return is a tuple of (loss, accuracy)
+        input: (B, S)
+        target: (B, S)
         """
-        out, _ = self.model(input, lengths)
+        out, _ = self.model(input, lengths)  # (B, S, Vocab)
 
         loss = self.loss(out.transpose(2, 1), target)
 
-        accuracy = torch.mean(
-                torch.masked_select(
-                    (torch.argmax(out, dim=-1) == target), target > 0
-                ).float()
-            )
+        # Get all the valid predictions
 
-        return loss, accuracy
+        mask = target > 0
+        predicted = torch.argmax(out, dim=-1)  # (B, S)
+        selected_predictions = torch.masked_select(
+            predicted, mask)
+
+        selected_targets = torch.masked_select(
+            target, mask
+        )
+
+        accuracy = torch.mean(
+            (selected_predictions == selected_targets).float())
+
+        # # Get all the targets
+        # accuracy = torch.mean(
+        #     torch.masked_select(
+        #         (torch.argmax(out, dim=-1) == target), target > 0
+        #     ).float()
+        # )
+
+        return selected_predictions.tolist(), selected_targets.tolist(), loss, accuracy
 
     def eval_step(
         self, validation_data: torch.tensor, target: torch.tensor, lengths: torch.tensor
-    ):
+    ) -> Tuple[torch.tensor, torch.tensor, torch.tensor, torch.tensor]:
         """
         Return is a tuple of (loss, accuracy)
         """
         self.model.eval()
-        loss, accuracy = self.model_step(validation_data, target, lengths)
-        return loss, accuracy
+        prediction_list, target_list, loss, accuracy = self.model_step(
+            validation_data, target, lengths)
+
+        # We can get all the ground truth and the predictions
+
+        return prediction_list, target_list, loss, accuracy
 
     def perform_eval_on_whole_dataset(self):
         print_peforming_task("Evaluation on whole dataset")
         self.perform_eval_on_dataloader(self.dataloader)
 
     def perform_eval_on_testing_set(self):
-        print_peforming_task("Evaluation on whole dataset")
+        print_peforming_task("Evaluation on test dataset")
         self.perform_eval_on_dataloader(self.test_data_loader)
 
     def perform_eval_on_training_set(self):
-        print_peforming_task("Evaluation on whole dataset")
+        print_peforming_task("Evaluation on training dataset")
         self.perform_eval_on_dataloader(self.test_data_loader)
 
     def perform_eval_on_validation_set(self):
-        print_peforming_task("Evaluation on whole dataset")
+        print_peforming_task("Evaluation on validation dataset")
         self.perform_eval_on_dataloader(self.test_data_loader)
 
     def perform_eval_on_dataloader(self, dataloader: DataLoader) -> Tuple[float, float]:
         all_loss = []
         all_accuracy = []
         all_batch_size = []
+        all_predictions = []
+        all_targets = []
         for _, (_, data, target, lengths) in enumerate(dataloader):
             data, target, lengths = (
                 data.to(self.device),
                 target.to(self.device),
                 lengths.to(self.device),
             )
-            loss, accuracy = self.eval_step(data, target, lengths)
+            prediction_list, target_list, loss, accuracy = self.eval_step(
+                data, target, lengths)
+            all_predictions.extend(prediction_list)
+            all_targets.extend(target_list)
             all_loss.append(loss)
             all_accuracy.append(accuracy)
             all_batch_size.append(len(lengths))
@@ -240,7 +274,28 @@ class PredictingController:
             "Evaluation result | Accuracy [%.4f] | Loss [%.4f]"
             % (mean_accuracy, mean_loss)
         )
+
+        self.all_predictions = all_predictions
+        self.all_targets = all_targets
+
+        print_big("Classification Report")
+        print(classification_report(all_targets, all_predictions))
+
+        print_big("Confusion Matrix")
+        self.plot_confusion_matrix(all_targets, all_predictions)
+
         return mean_loss.item(), mean_accuracy.item()
+
+    def plot_confusion_matrix(self, targets: list[int], predictions:  list[int]):
+        # Plot the cufusion matrix
+        cm = confusion_matrix(targets, predictions, labels=list(
+            range(self.dataset.vocab_size())))
+        self.cm = cm
+        df_cm = pd.DataFrame(cm, index=list(
+            self.dataset.vocab_dict.keys()), columns=list(self.dataset.vocab_dict.keys()))
+        self.df_cm = df_cm
+        plt.figure(figsize=(40, 40), dpi=100)
+        sn.heatmap(df_cm / np.sum(cm), annot=True, fmt='.2%')
 
     def __buid_model_with_parameters(self, parameters):
         # Setting up model

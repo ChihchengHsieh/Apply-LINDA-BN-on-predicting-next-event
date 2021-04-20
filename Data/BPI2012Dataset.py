@@ -28,7 +28,7 @@ class BPI2012Dataset(Dataset):
         self.filePath = filePath
         self.preprocessed_folder_path = preprocessed_folder_path
         self.preprocessed_df_type = preprocessed_df_type
-        self.__vocab_dict: dict(str, int)
+        self.vocab_dict: dict(str, int)
         self.df: pd.DataFrame
 
         if (not preprocessed_folder_path is None) and self.preprocessed_data_exist(preprocessed_folder_path, preprocessed_df_type):
@@ -94,13 +94,13 @@ class BPI2012Dataset(Dataset):
 
         self.df: pd.DataFrame = pd.DataFrame(final_df_data)
         self.df.sort_values("caseid", inplace= True)
-        self.__vocab_dict: dict(str, int) = vocab_dict
+        self.vocab_dict: dict(str, int) = vocab_dict
 
     def longest_trace_len(self) -> int:
         return self.df.trace.map(len).max()
 
     def index_to_vocab(self, index: int) -> str:
-        for k, v in self.__vocab_dict.items():
+        for k, v in self.vocab_dict.items():
             if (v == index):
                 return k
             continue
@@ -112,12 +112,12 @@ class BPI2012Dataset(Dataset):
         return [self.vocab_to_index(v) for v in list_of_vocab]
 
     def vocab_to_index(self, vocab: str) -> int:
-        return self.__vocab_dict[vocab]
+        return self.vocab_dict[vocab]
 
     def vocab_size(self) -> int:
         # This include tokens
         # minus 3 to remove <START>, <END> and <PAD>
-        return len(self.__vocab_dict)
+        return len(self.vocab_dict)
 
     def __len__(self) -> int:
         return len(self.df)
@@ -197,7 +197,7 @@ class BPI2012Dataset(Dataset):
         vocab_dict_path = os.path.join(
             preprocessed_folder_path, BPI2012Dataset.vocab_dict_file_name)
         with open(vocab_dict_path, 'w') as output_file:
-            json.dump(self.__vocab_dict, output_file, indent='\t')
+            json.dump(self.vocab_dict, output_file, indent='\t')
 
         print_big(
             "Preprocessed data saved successfully"
@@ -214,7 +214,7 @@ class BPI2012Dataset(Dataset):
         vocab_dict_path = os.path.join(
             preprocessed_folder_path, BPI2012Dataset.vocab_dict_file_name)
         with open(vocab_dict_path, 'r') as output_file:
-            self.__vocab_dict = json.load(output_file)
+            self.vocab_dict = json.load(output_file)
 
         print_big(
             "Preprocessed data loaded successfully"
