@@ -1,5 +1,5 @@
 import numpy as np
-
+import pyAgrum as gum
 def generate_permutation_for_trace(trace: np.array, vocab_size: int, last_n_stages_to_permute: int = None):
     # For each stage (activity), we replace it by another.
     # But we still maintain the same length of the trace.
@@ -33,3 +33,8 @@ def generate_permutation_for_trace(trace: np.array, vocab_size: int, last_n_stag
 def replaceIndex(trace: np.array, index: int, value: int) -> np.array:
     trace[index] = value
     return trace
+
+
+def exploring():
+    gum.MarkovBlanket
+    pass
