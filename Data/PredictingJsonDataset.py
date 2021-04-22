@@ -1,6 +1,6 @@
 from CustomExceptions.Exceptions import NotSupportedError
 from json import load
-from typing import Iterable, Tuple, Union
+from typing import Iterable, List, Tuple, Union
 from pandas.core.frame import DataFrame
 import torch
 import pandas as pd
@@ -36,7 +36,7 @@ class PredictingJsonDataset(Dataset):
 
         self.data = [(k, v) for k, v in retrieved_dict.items()]
 
-    def __getitem__(self, index: int) -> Tuple[str, list[str]]:
+    def __getitem__(self, index: int) -> Tuple[str, List[str]]:
         d = self.data[index]
         return d[0], d[1]
 

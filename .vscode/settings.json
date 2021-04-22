@@ -5,5 +5,5 @@
     "python.linting.pylintArgs":[
         "--disable-msg=not-callable"
     ],
-    "python.pythonPath": "/Users/jrhs/miniforge3/envs/py38/bin/python"
+    "python.pythonPath": "/Users/jrhs/.pyenv/versions/dl/bin/python"
 }
