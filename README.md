@@ -146,3 +146,45 @@ python setup.py install
 ```
 
 
+
+
+### Installing pytorch 
+
+(Remind: Pytorch can run slower on M1, since it's optimized for Intel chips)
+
+[[1.8.1]](https://github.com/pytorch/pytorch/tree/v1.8.1) 
+
+I built a wheel for pytorch since I may reinstall thi latter in other platform (Wheel building instruction below)
+
+In my case, I generated a `torch-1.8.0a0+56b43f4-cp39-cp39-macosx_11_0_arm64.whl` file
+
+And, install it by:
+
+```
+pip3 install torch-1.8.0a0+56b43f4-cp39-cp39-macosx_11_0_arm64.whl
+```
+
+
+
+
+
+
+### Building Wheel for packages
+
+Change to the version you want by 
+
+```
+git reset --hard [ENTER HERE THE COMMIT HASH YOU WANT]
+```
+
+Then build whl by:
+
+```
+python3 setup.py bdist_wheel
+```
+
+After the building finished, you should be able to find the wheel file in `dist` folder.
+
+
+
+
