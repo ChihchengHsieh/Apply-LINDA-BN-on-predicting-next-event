@@ -187,4 +187,7 @@ After the building finished, you should be able to find the wheel file in `dist`
 
 
 
+### Install pm4py
+
+Install `cvxopt` first, then will be able to install pm4py through `pip3 install pm4py`.
 
