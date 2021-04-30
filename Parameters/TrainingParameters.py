@@ -24,7 +24,7 @@ class TrainingParameters(object):
 
     bpi_2012_path: str = "./datasets/event_logs/BPI_Challenge_2012.xes"
     preprocessed_bpi_2012_folder_path = "./datasets/preprocessed/BPI_Challenge_2012"
-    preprocessed_df_type: PreprocessedDfType = PreprocessedDfType.HDF5
+    preprocessed_df_type: PreprocessedDfType = PreprocessedDfType.Pickle
 
     # Set to None to not loading pre-trained model.
     # load_model_folder_path: str = "SavedModels/2021-04-13 01:07:49.273685"

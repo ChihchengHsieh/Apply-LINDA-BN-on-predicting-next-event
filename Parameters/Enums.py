@@ -20,5 +20,4 @@ class SelectableLrScheduler(Enum):
 
 class PreprocessedDfType(Enum):
     Pickle = 1
-    HDF5 = 2
     

@@ -19,7 +19,6 @@ from Parameters.Enums import PreprocessedDfType
 
 class BPI2012Dataset(Dataset):
     pickle_df_file_name = "df.pickle"
-    hdf5_df_file_name = "store.h5"
     vocab_dict_file_name = "vocab_dict.json"
 
     def __init__(self, filePath: str, preprocessed_folder_path: str, preprocessed_df_type: PreprocessedDfType) -> None:
@@ -93,7 +92,7 @@ class BPI2012Dataset(Dataset):
             })
 
         self.df: pd.DataFrame = pd.DataFrame(final_df_data)
-        self.df.sort_values("caseid", inplace= True)
+        self.df.sort_values("caseid", inplace=True)
         self.vocab_dict: dict(str, int) = vocab_dict
 
     def longest_trace_len(self) -> int:
@@ -127,9 +126,7 @@ class BPI2012Dataset(Dataset):
 
     @staticmethod
     def get_file_name_from_preprocessed_df_type(preprocessed_df_type: PreprocessedDfType):
-        if preprocessed_df_type == PreprocessedDfType.HDF5:
-            return BPI2012Dataset.hdf5_df_file_name
-        elif preprocessed_df_type == PreprocessedDfType.Pickle:
+        if preprocessed_df_type == PreprocessedDfType.Pickle:
             return BPI2012Dataset.pickle_df_file_name
         else:
             raise NotSupportedError(
@@ -149,9 +146,7 @@ class BPI2012Dataset(Dataset):
         file_name = BPI2012Dataset.get_file_name_from_preprocessed_df_type(
             preprocessed_df_type)
         df_path = os.path.join(preprocessed_folder_path, file_name)
-        if (preprocessed_df_type == PreprocessedDfType.HDF5):
-            self.store_df_in_hdf5(df_path)
-        elif(preprocessed_df_type == PreprocessedDfType.Pickle):
+        if(preprocessed_df_type == PreprocessedDfType.Pickle):
             self.store_df_in_pickle(df_path)
         else:
             raise NotSupportedError(
@@ -161,24 +156,14 @@ class BPI2012Dataset(Dataset):
         file_name = BPI2012Dataset.get_file_name_from_preprocessed_df_type(
             preprocessed_df_type)
         df_path = os.path.join(preprocessed_folder_path, file_name)
-        if (preprocessed_df_type == PreprocessedDfType.HDF5):
-            self.load_df_from_hdf5(df_path)
-        elif(preprocessed_df_type == PreprocessedDfType.Pickle):
+        if(preprocessed_df_type == PreprocessedDfType.Pickle):
             self.load_df_from_pickle(df_path)
         else:
             raise NotSupportedError(
                 "Not supported loading format for preprocessed data")
 
-    def store_df_in_hdf5(self, path):
-        store = pd.HDFStore(path)
-        store['df'] = self.df
-
     def store_df_in_pickle(self, path):
         self.df.to_pickle(path)
-
-    def load_df_from_hdf5(self, path):
-        store = pd.HDFStore(path)
-        self.df = store['df']
 
     def load_df_from_pickle(self, path):
         self.df = pd.read_pickle(path)
