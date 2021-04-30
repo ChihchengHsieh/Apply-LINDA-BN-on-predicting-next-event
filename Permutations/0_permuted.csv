@@ -1,4 +1,4 @@
-stage_1,stage_2,stage_3,stage_4,stage_5,stage_6,stage_7,stage_8,stage_9
+step_1,step_2,step_3,step_4,step_5,step_6,step_7,step_8,step_9
 W_Wijzigen contractgegevens_SCHEDULE,A_SUBMITTED_COMPLETE,A_PARTLYSUBMITTED_COMPLETE,A_PREACCEPTED_COMPLETE,W_Completeren aanvraag_SCHEDULE,W_Completeren aanvraag_START,A_CANCELLED_COMPLETE,W_Completeren aanvraag_COMPLETE,<EOS>
 <SOS>,A_SUBMITTED_COMPLETE,A_PARTLYSUBMITTED_COMPLETE,A_PREACCEPTED_COMPLETE,W_Completeren aanvraag_SCHEDULE,W_Completeren aanvraag_COMPLETE,A_CANCELLED_COMPLETE,W_Completeren aanvraag_COMPLETE,<EOS>
 <SOS>,A_SUBMITTED_COMPLETE,A_PARTLYSUBMITTED_COMPLETE,A_PREACCEPTED_COMPLETE,W_Completeren aanvraag_SCHEDULE,O_SENT_COMPLETE,A_CANCELLED_COMPLETE,W_Completeren aanvraag_COMPLETE,<EOS>

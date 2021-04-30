@@ -19,7 +19,8 @@ import numpy as np
 import pandas as pd
 import pyAgrum as gum
 import pyAgrum.lib.notebook as gnb
-
+import pydotplus as dot
+from IPython.core.display import SVG
 
 class ExplainingController:
     def __init__(self) -> None:
@@ -204,12 +205,15 @@ class ExplainingController:
 
         # compute Markov Blanket
         markov_blanket = gum.MarkovBlanket(bn, col_names[-1])
+        markov_blanket_dot = dot.graph_from_dot_data(markov_blanket.toDot())
+        markov_blanket_dot.set_bgcolor("transparent")
+        markov_blanket_html = SVG(markov_blanket_dot.create_svg()).data
 
         inference = gnb.getInference(
             bn, evs={col_names[-1]: to_infer_vocab}, targets=col_names, size="70")
 
         os.remove(file_path)
-        return data_predicted_list, gnb.getBN(bn), inference, infoBN, markov_blanket._repr_html_()
+        return data_predicted_list, gnb.getBN(bn), inference, infoBN, markov_blanket_html
 
     def generate_html_page_from_graphs(self, bn, inference, infoBN, markov_blanket):
         outputstring: str = "<h1 style=\"text-align: center\">BN</h1>" \
