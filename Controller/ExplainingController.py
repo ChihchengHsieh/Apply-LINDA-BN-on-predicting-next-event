@@ -6,7 +6,7 @@ from torch.nn.utils.rnn import pad_sequence
 from Utils.Constants import Constants
 from Models.BaselineLSMTModel import BaselineLSTMModel
 from Utils.PrintUtils import print_big, print_peforming_task, print_taks_done
-from Parameters.Enums import SelectableDatasets, SelectableLoss, SelectableModels
+from Parameters.Enums import ActivityType, SelectableDatasets, SelectableLoss, SelectableModels
 from Data.BPI2012Dataset import BPI2012Dataset
 import torch
 from Parameters.PredictingParameters import PredictingParameters
@@ -21,6 +21,9 @@ import pyAgrum as gum
 import pyAgrum.lib.notebook as gnb
 import pydotplus as dot
 from IPython.core.display import SVG
+from torch.utils.data import DataLoader
+
+
 
 class ExplainingController:
     def __init__(self) -> None:
@@ -32,9 +35,13 @@ class ExplainingController:
         )
 
         # Load vocab dict
-        if self.training_parameters["dataset"] == str(SelectableDatasets.BPI2012):
+        dataset = SelectableDatasets[self.training_parameters["dataset"]]
+        if dataset == SelectableDatasets.BPI2012:
             vocab_dict_path = os.path.join(
-                PredictingParameters.preprocessed_bpi_2012_folder_path, BPI2012Dataset.vocab_dict_file_name)
+                PredictingParameters.preprocessed_bpi_2012_folder_path,
+                BPI2012Dataset.get_type_folder_name([ActivityType[t]
+                                                     for t in self.training_parameters["BPI2012_include_types"]]),
+                BPI2012Dataset.vocab_dict_file_name)
             with open(vocab_dict_path, 'r') as output_file:
                 self.vocab_dict = json.load(output_file)
         else:
@@ -51,6 +58,77 @@ class ExplainingController:
         self.model.to(self.device)
 
         self.__initialise_loss_fn()
+
+    def load_dataset(self, ):
+        # Load standard dataset
+
+        if SelectableDatasets[self.training_parameters["dataset"]] == SelectableDatasets.BPI2012:
+            self.dataset = BPI2012Dataset(
+                filePath=PredictingParameters.bpi_2012_path,
+                preprocessed_folder_path=PredictingParameters.preprocessed_bpi_2012_folder_path,
+                preprocessed_df_type=PredictingParameters.preprocessed_df_type,
+                include_types=[ActivityType[t]
+                               for t in self.training_parameters["BPI2012_include_types"]]
+            )
+        else:
+            raise NotSupportedError("Dataset you selected is not supported")
+
+        # Initialise dataloaders
+        self.dataloader = DataLoader(
+            self.dataset,
+            batch_size=PredictingParameters.batch_size,
+            shuffle=True,
+            collate_fn=self.dataset.collate_fn,
+            # num_workers=4,
+            # worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed()) % (2**32-1)),
+        )
+
+        # Create datasets
+        # Lengths for each set
+        train_dataset_len = int(
+            len(self.dataset) * self.training_parameters["train_test_split_portion"][0]
+        )
+        test_dataset_len = int(
+            len(self.dataset) * self.training_parameters["train_test_split_portion"][-1]
+        )
+        validation_dataset_len = len(self.dataset) - (
+            train_dataset_len + test_dataset_len
+        )
+
+        # Split the dataset
+        (
+            self.train_dataset,
+            self.validation_dataset,
+            self.test_dataset,
+        ) = torch.utils.data.random_split(
+            dataset=self.dataset,
+            lengths=[train_dataset_len,
+                     validation_dataset_len, test_dataset_len],
+            generator=torch.Generator().manual_seed(
+                self.training_parameters["dataset_split_seed"]),
+        )
+
+        # Initialise dataloaders
+        self.train_data_loader = DataLoader(
+            self.train_dataset,
+            batch_size=PredictingParameters.batch_size,
+            shuffle=True,
+            collate_fn=self.dataset.collate_fn,
+            # num_workers=4,
+            # worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed()) % (2**32-1)),
+        )
+        self.validation_data_loader = DataLoader(
+            self.validation_dataset,
+            batch_size=PredictingParameters.batch_size,
+            shuffle=True,
+            collate_fn=self.dataset.collate_fn,
+        )
+        self.test_data_loader = DataLoader(
+            self.test_dataset,
+            batch_size=PredictingParameters.batch_size,
+            shuffle=True,
+            collate_fn=self.dataset.collate_fn,
+        )
 
     def load_training_parameters(self, folder_path: str):
         parameters_loading_path = os.path.join(
@@ -76,7 +154,7 @@ class ExplainingController:
 
     def __buid_model_with_parameters(self, parameters):
         # Setting up model
-        if parameters["model"] == str(SelectableModels.BaseLineLSTMModel):
+        if SelectableModels[parameters["model"]] == SelectableModels.BaseLineLSTMModel:
             self.model = BaselineLSTMModel(
                 vocab_size=self.vocab_size(),
                 embedding_dim=parameters["BaselineLSTMModelParameters"][
@@ -224,6 +302,16 @@ class ExplainingController:
                             + "<div style=\"text-align: center\">" \
                             + markov_blanket + "</div>"
         return outputstring
+
+    def save_html(self, html_content: str):
+        path_to_explanation = './Explanations'
+        os.makedirs(path_to_explanation, exist_ok=True)
+        save_path = os.path.join(
+            path_to_explanation, '%s_graphs_LINDA-BN.html' % (datetime.now()))
+        with open(save_path, 'w')as output_file:
+            output_file.write(html_content)
+
+        print_big("HTML page has been saved to: %s" % (save_path))
 
     def predicting_from_list_of_vacab_trace(
         self, data: list[list[str]], n_steps: int = None, use_argmax=False

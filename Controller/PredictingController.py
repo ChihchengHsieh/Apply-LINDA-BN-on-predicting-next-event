@@ -23,7 +23,7 @@ from Models.BaselineLSMTModel import BaselineLSTMModel
 from Controller.TrainingRecord import TrainingRecord
 from CustomExceptions.Exceptions import NotSupportedError
 from Parameters.PredictingParameters import PredictingParameters
-from Parameters.Enums import SelectableDatasets, SelectableLoss, SelectableModels
+from Parameters.Enums import ActivityType, SelectableDatasets, SelectableLoss, SelectableModels
 
 from Utils.PrintUtils import (
     print_big,
@@ -68,11 +68,14 @@ class PredictingController:
 
     def __intialise_dataset_with_parameters(self, parameters):
         # Load standard dataset
-        if parameters["dataset"] == str(SelectableDatasets.BPI2012):
+
+        if SelectableDatasets[parameters["dataset"]] == SelectableDatasets.BPI2012:
             self.dataset = BPI2012Dataset(
                 filePath=PredictingParameters.bpi_2012_path,
                 preprocessed_folder_path=PredictingParameters.preprocessed_bpi_2012_folder_path,
                 preprocessed_df_type=PredictingParameters.preprocessed_df_type,
+                include_types=[ActivityType[t]
+                               for t in parameters["BPI2012_include_types"]]
             )
         else:
             raise NotSupportedError("Dataset you selected is not supported")
@@ -298,8 +301,10 @@ class PredictingController:
         sn.heatmap(df_cm / np.sum(cm), annot=True, fmt='.2%')
 
     def __buid_model_with_parameters(self, parameters):
+        model = SelectableModels[parameters["model"]]
+
         # Setting up model
-        if parameters["model"] == str(SelectableModels.BaseLineLSTMModel):
+        if model == SelectableModels.BaseLineLSTMModel:
             self.model = BaselineLSTMModel(
                 vocab_size=self.dataset.vocab_size(),
                 embedding_dim=parameters["BaselineLSTMModelParameters"][
