@@ -17,9 +17,9 @@
 - [x] The prediction should be able to use dataset and dataloader
 - [x] Repair the argmax will cause infiite <PAD> 
 - [x] Create the requirement.text
-- [ ] Read papers
-- [ ] Read LINDA-BN implementation
-- [ ] Apply LINDA-BN
+- [x] Read papers
+- [x] Read LINDA-BN implementation
+- [x] Apply LINDA-BN
 
 
 [[Predicting Next]](https://www.kdnuggets.com/2020/07/pytorch-lstm-text-generation-tutorial.html)
