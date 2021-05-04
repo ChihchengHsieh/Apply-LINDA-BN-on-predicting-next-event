@@ -14,43 +14,45 @@ from Utils.Constants import Constants
 from Utils.FileUtils import file_exists
 import json
 import os
-from Parameters.Enums import PreprocessedDfType
+from Parameters.Enums import PreprocessedDfType, ActivityType
+from enum import Enum
+
 
 
 class BPI2012Dataset(Dataset):
     pickle_df_file_name = "df.pickle"
     vocab_dict_file_name = "vocab_dict.json"
 
-    def __init__(self, filePath: str, preprocessed_folder_path: str, preprocessed_df_type: PreprocessedDfType) -> None:
+    def __init__(self, filePath: str, preprocessed_folder_path: str, preprocessed_df_type: PreprocessedDfType, include_types: list[ActivityType] = [ActivityType.A, ActivityType.W, ActivityType.O]) -> None:
         super().__init__()
 
         self.filePath = filePath
-        self.preprocessed_folder_path = preprocessed_folder_path
+        self.preprocessed_folder_path = os.path.join(
+            preprocessed_folder_path, BPI2012Dataset.get_type_folder_name(include_types))
         self.preprocessed_df_type = preprocessed_df_type
         self.vocab_dict: dict(str, int)
         self.df: pd.DataFrame
 
-        if (not preprocessed_folder_path is None) and self.preprocessed_data_exist(preprocessed_folder_path, preprocessed_df_type):
-            self.load_preprocessed_data(
-                preprocessed_folder_path,
-                preprocessed_df_type,
-            )
+        if (not preprocessed_folder_path is None) and self.preprocessed_data_exist(self.preprocessed_folder_path, self.preprocessed_df_type):
+            self.load_preprocessed_data()
         else:
-            self.__initialise_data(filePath=filePath)
+            self.__initialise_data(
+                filePath=filePath, include_types=include_types)
 
             # Save preprocessed data.
             if not preprocessed_folder_path is None:
-                self.save_preprocessed_data(
-                    preprocessed_folder_path,
-                    preprocessed_df_type,
-                )
+                self.save_preprocessed_data()
 
-    def __initialise_data(self, filePath: str) -> None:
+    def __initialise_data(self, filePath: str, include_types: list[ActivityType]) -> None:
         log = pm4py.read_xes(filePath)
         flattern_log: list(dict(str, any)) = ([{**event,
                                                 'caseid': trace.attributes['concept:name']}
                                                for trace in log for event in trace])
         df = pd.DataFrame(flattern_log)
+
+        df = df[[any(bool_set) for bool_set in zip(
+            *([df["concept:name"].str.startswith(a.value) for a in include_types]))]]
+
         df["name_and_transition"] = df["concept:name"] + \
             "_" + df["lifecycle:transition"]
         df = df[['time:timestamp', 'name_and_transition', "caseid"]]
@@ -61,7 +63,7 @@ class BPI2012Dataset(Dataset):
                 timedelta(microseconds=1)
             ending_time = group.iloc[-1]["time:timestamp"] + \
                 timedelta(microseconds=1)
-            traces = group.to_dict('record')
+            traces = group.to_dict('records')
 
             # Add start and end tags.
             traces.insert(
@@ -125,6 +127,11 @@ class BPI2012Dataset(Dataset):
         return self.df.iloc[index]
 
     @staticmethod
+    def get_type_folder_name(include_types: list[ActivityType]):
+        return "".join(
+            sorted([a.value for a in include_types], key=str.lower))
+
+    @staticmethod
     def get_file_name_from_preprocessed_df_type(preprocessed_df_type: PreprocessedDfType):
         if preprocessed_df_type == PreprocessedDfType.Pickle:
             return BPI2012Dataset.pickle_df_file_name
@@ -133,10 +140,10 @@ class BPI2012Dataset(Dataset):
                 "Not supported saving format for preprocessed data")
 
     @staticmethod
-    def preprocessed_data_exist(preprocessed_folder_path: str, preprocessed_df_type: PreprocessedDfType):
+    def preprocessed_data_exist(preprocessed_folder_path: str, preprocessed_df_type: PreprocessedDfType, ):
         file_name = BPI2012Dataset.get_file_name_from_preprocessed_df_type(
             preprocessed_df_type)
-        df_path = os.path.join(preprocessed_folder_path, file_name)
+        df_path = os.path.join(preprocessed_folder_path,  file_name)
         vocab_dict_path = os.path.join(
             preprocessed_folder_path, BPI2012Dataset.vocab_dict_file_name)
         return file_exists(df_path) and file_exists(vocab_dict_path)
@@ -171,16 +178,17 @@ class BPI2012Dataset(Dataset):
     def padding_index(self):
         return self.vocab_to_index(Constants.PAD_VOCAB)
 
-    def save_preprocessed_data(self, preprocessed_folder_path: str, preprocessed_df_type: PreprocessedDfType):
-        if preprocessed_folder_path is None:
+    def save_preprocessed_data(self):
+        if self.preprocessed_folder_path is None:
             raise Error("Preprocessed folder path can't be None")
 
         # Store df
-        self.store_df(preprocessed_folder_path, preprocessed_df_type)
+        self.store_df(self.preprocessed_folder_path,
+                      self.preprocessed_df_type)
 
         # Store vocab_dict
         vocab_dict_path = os.path.join(
-            preprocessed_folder_path, BPI2012Dataset.vocab_dict_file_name)
+            self.preprocessed_folder_path, BPI2012Dataset.vocab_dict_file_name)
         with open(vocab_dict_path, 'w') as output_file:
             json.dump(self.vocab_dict, output_file, indent='\t')
 
@@ -188,21 +196,21 @@ class BPI2012Dataset(Dataset):
             "Preprocessed data saved successfully"
         )
 
-    def load_preprocessed_data(self, preprocessed_folder_path: str, preprocessed_df_type: PreprocessedDfType):
-        if preprocessed_folder_path is None:
+    def load_preprocessed_data(self):
+        if self.preprocessed_folder_path is None:
             raise Error("Preprocessed folder path can't be None")
 
         # Load df
-        self.load_df(preprocessed_folder_path, preprocessed_df_type)
+        self.load_df(self.preprocessed_folder_path, self.preprocessed_df_type)
 
         # load vocab_dict
         vocab_dict_path = os.path.join(
-            preprocessed_folder_path, BPI2012Dataset.vocab_dict_file_name)
+            self.preprocessed_folder_path, BPI2012Dataset.vocab_dict_file_name)
         with open(vocab_dict_path, 'r') as output_file:
             self.vocab_dict = json.load(output_file)
 
         print_big(
-            "Preprocessed data loaded successfully"
+            "Preprocessed data loaded successfully: %s" % (self.preprocessed_folder_path)
         )
 
     @staticmethod

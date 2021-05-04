@@ -115,7 +115,6 @@ class BaselineLSTMModel(nn.Module):
             predicted, hidden_state = self.predict_next(input=input, lengths=lengths,
                                                         previous_hidden_state=hidden_state, use_argmax=use_argmax)
 
-            print(predicted.shape)
             # Add predicted to unpadded.
             predicted_list = [u + [p.item()]
                               for u, p in zip(predicted_list, predicted)]

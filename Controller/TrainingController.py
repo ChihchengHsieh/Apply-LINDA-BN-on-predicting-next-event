@@ -82,6 +82,7 @@ class TrainingController:
                 filePath=TrainingParameters.bpi_2012_path,
                 preprocessed_folder_path=TrainingParameters.preprocessed_bpi_2012_folder_path,
                 preprocessed_df_type=TrainingParameters.preprocessed_df_type,
+                include_types=TrainingParameters.BPI2012_include_types,
             )
         else:
             raise NotSupportedError("Dataset you selected is not supported")
@@ -414,7 +415,8 @@ class TrainingController:
         # Load model
         model_loading_path = os.path.join(
             folder_path, self.model.model_save_file_name)
-        checkpoint = torch.load(model_loading_path, map_location=torch.device(self.device))
+        checkpoint = torch.load(
+            model_loading_path, map_location=torch.device(self.device))
         self.model.load_state_dict(checkpoint["model_state_dict"])
 
         if load_optimizer:
@@ -430,7 +432,7 @@ class TrainingController:
 
     def __buid_model_with_parameters(self, parameters):
         # Setting up model
-        if parameters["model"] == str(SelectableModels.BaseLineLSTMModel):
+        if SelectableModels[parameters["model"]] == SelectableModels.BaseLineLSTMModel:
             self.model = BaselineLSTMModel(
                 vocab_size=self.dataset.vocab_size(),
                 embedding_dim=parameters["BaselineLSTMModelParameters"][
@@ -448,13 +450,13 @@ class TrainingController:
 
     def __build_optimizer_with_parameters(self, parameters):
         # Setting up optimizer
-        if parameters["optimizer"] == str(SelectableOptimizer.Adam):
+        if SelectableOptimizer[parameters["optimizer"]] == SelectableOptimizer.Adam:
             self.opt = optim.Adam(
                 self.model.parameters(),
                 lr=parameters["OptimizerParameters"]["learning_rate"],
                 weight_decay=parameters["OptimizerParameters"]["l2"],
             )
-        elif parameters["optimizer"] == str(SelectableOptimizer.SGD):
+        elif SelectableOptimizer[parameters["optimizer"]] == SelectableOptimizer.SGD:
             self.opt = optim.SGD(
                 self.model.parameters(),
                 lr=parameters["OptimizerParameters"]["learning_rate"],
@@ -465,17 +467,15 @@ class TrainingController:
             raise NotSupportedError("Optimizer you selected is not supported")
 
         # Setting up the learning rate scheduler
-        if parameters["OptimizerParameters"]["scheduler"] == str(
-            SelectableLrScheduler.StepScheduler
-        ):
+        shceduler= SelectableLrScheduler[parameters["OptimizerParameters"]["scheduler"]]
+
+        if shceduler == SelectableLrScheduler.StepScheduler:
             self.scheduler = optim.lr_scheduler.StepLR(
                 self.opt,
                 step_size=parameters["OptimizerParameters"]["lr_scheduler_step"],
                 gamma=parameters["OptimizerParameters"]["lr_scheduler_gamma"],
             )
-        elif parameters["OptimizerParameters"]["scheduler"] == str(
-            SelectableLrScheduler.NotUsing
-        ):
+        elif shceduler == SelectableLrScheduler.NotUsing:
             self.scheduler = None
         else:
             raise NotSupportedError(
@@ -657,12 +657,15 @@ class TrainingController:
         training_parameters = self.load_training_parameters(
             folder_path=folder_path)
         self.intialise_dataset_with_parameters(self, training_parameters)
-        self.load_trained_model ( folder_path= folder_path,load_optimizer= TrainingParameters.load_optimizer,parameters= training_parameters  )
+        self.load_trained_model(
+            folder_path=folder_path, load_optimizer=TrainingParameters.load_optimizer, parameters=training_parameters)
         self.training_parameters = training_parameters
 
     def intialise_dataset_with_parameters(self, parameters):
+        dataset = SelectableDatasets[parameters["dataset"]]
+
         # Load standard dataset
-        if parameters["dataset"] == str(SelectableDatasets.BPI2012):
+        if dataset == SelectableDatasets.BPI2012:
             self.dataset = BPI2012Dataset(
                 filePath=TrainingParameters.bpi_2012_path,
                 preprocessed_folder_path=TrainingParameters.preprocessed_bpi_2012_folder_path,

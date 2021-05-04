@@ -7,6 +7,7 @@ from Parameters.Enums import (
     SelectableLrScheduler,
     SelectableModels,
     SelectableOptimizer,
+    ActivityType
 )
 
 
@@ -33,12 +34,14 @@ class TrainingParameters(object):
     load_optimizer: bool = True
 
     dataset: SelectableDatasets = SelectableDatasets.BPI2012
+    BPI2012_include_types = [ActivityType.A ]
     model: SelectableModels = SelectableModels.BaseLineLSTMModel
     optimizer: SelectableOptimizer = SelectableOptimizer.Adam
     loss: SelectableLoss = SelectableLoss.CrossEntropy
     stop_epoch: int = 100
     batch_size: int = 64
-    train_test_split_portion = [0.8, 0.1]  # Remaining will be used for validation.
+    # Remaining will be used for validation.
+    train_test_split_portion = [0.8, 0.1]
     verbose_freq: int = 100  # in step
     run_validation_freq: int = 200  # in step
 
@@ -54,7 +57,7 @@ class TrainingParameters(object):
         learning_rate: float = 0.005
         l2: float = 0.000001
 
-        ## Scheduler
+        # Scheduler
         scheduler: SelectableLrScheduler = SelectableLrScheduler.StepScheduler
         lr_scheduler_step: int = 1000
         lr_scheduler_gamma: float = 0.85

@@ -1,23 +1,28 @@
 from enum import Enum
 
 class SelectableDatasets(Enum):
-    BPI2012 = 1
-    Helpdesk = 2
+    BPI2012 = "BPI2012"
+    Helpdesk = "Helpdesk"
 
 class SelectableLoss(Enum):
-    CrossEntropy = 1
+    CrossEntropy = "CrossEntropy"
 
 class SelectableModels(Enum):
-    BaseLineLSTMModel = 1
+    BaseLineLSTMModel = "BaseLineLSTMModel"
 
 class SelectableOptimizer(Enum):
-    Adam = 1
-    SGD = 2
+    Adam = "Adam"
+    SGD = "SGD"
 
 class SelectableLrScheduler(Enum):
-    StepScheduler = 1
-    NotUsing = 2
+    StepScheduler = "StepScheduler"
+    NotUsing = "NotUsing"
 
 class PreprocessedDfType(Enum):
-    Pickle = 1
-    
+    Pickle = "Pickle"
+
+class ActivityType(Enum):
+    O = "O"
+    A = "A"
+    W = "W"
+

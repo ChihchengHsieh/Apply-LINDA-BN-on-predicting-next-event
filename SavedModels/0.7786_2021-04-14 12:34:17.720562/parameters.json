@@ -1,35 +1,33 @@
 {
-	"bpi_2012_path": "./datasets/event_logs/BPI_Challenge_2012.xes",
-	"preprocessed_bpi_2012_folder_path": "./datasets/preprocessed/BPI_Challenge_2012",
-	"preprocessed_df_type": "PreprocessedDfType.Pickle",
-	"load_model_folder_path": null,
-	"load_optimizer": true,
-	"dataset": "SelectableDatasets.BPI2012",
-	"model": "SelectableModels.BaseLineLSTMModel",
-	"optimizer": "SelectableOptimizer.Adam",
-	"loss": "SelectableLoss.CrossEntropy",
-	"stop_epoch": 100,
-	"batch_size": 64,
-	"train_test_split_portion": [
-		0.8,
-		0.1
-	],
-	"verbose_freq": 100,
-	"run_validation_freq": 200,
-	"dataset_split_seed": 12345,
-	"max_eos_predicted_length": 50,
-	"OptimizerParameters": {
-		"learning_rate": 0.05,
-		"l2": 1e-06,
-		"scheduler": "SelectableLrScheduler.StepScheduler",
-		"lr_scheduler_step": 300,
-		"lr_scheduler_gamma": 0.85,
-		"SGD_momentum": 0.9
-	},
-	"BaselineLSTMModelParameters": {
-		"embedding_dim": 256,
-		"lstm_hidden": 512,
-		"dropout": 0.2,
-		"num_lstm_layers": 2
-	}
+  "bpi_2012_path": "./datasets/event_logs/BPI_Challenge_2012.xes",
+  "preprocessed_bpi_2012_folder_path": "./datasets/preprocessed/BPI_Challenge_2012",
+  "preprocessed_df_type": "PreprocessedDfType.Pickle",
+  "load_model_folder_path": null,
+  "load_optimizer": true,
+  "dataset": "BPI2012",
+  "model": "BaseLineLSTMModel",
+  "optimizer": "Adam",
+  "loss": "CrossEntropy",
+  "BPI2012_include_types": ["A", "O", "W"],
+  "stop_epoch": 100,
+  "batch_size": 64,
+  "train_test_split_portion": [0.8, 0.1],
+  "verbose_freq": 100,
+  "run_validation_freq": 200,
+  "dataset_split_seed": 12345,
+  "max_eos_predicted_length": 50,
+  "OptimizerParameters": {
+    "learning_rate": 0.05,
+    "l2": 1e-6,
+    "scheduler": "StepScheduler",
+    "lr_scheduler_step": 300,
+    "lr_scheduler_gamma": 0.85,
+    "SGD_momentum": 0.9
+  },
+  "BaselineLSTMModelParameters": {
+    "embedding_dim": 256,
+    "lstm_hidden": 512,
+    "dropout": 0.2,
+    "num_lstm_layers": 2
+  }
 }
