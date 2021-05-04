@@ -47,7 +47,7 @@ class BPI2012Dataset(Dataset):
 
     def __initialise_data(self, filePath: str) -> None:
         log = pm4py.read_xes(filePath)
-        flattern_log: list(dict(str, any)) = ([{**event,
+        flattern_log: list[dict[str, any]] = ([{**event,
                                                 'caseid': trace.attributes['concept:name']}
                                                for trace in log for event in trace])
         df = pd.DataFrame(flattern_log)
