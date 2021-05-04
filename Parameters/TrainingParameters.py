@@ -34,7 +34,7 @@ class TrainingParameters(object):
     load_optimizer: bool = True
 
     dataset: SelectableDatasets = SelectableDatasets.BPI2012
-    BPI2012_include_types = [ActivityType.A ]
+    BPI2012_include_types = [ActivityType.A]
     model: SelectableModels = SelectableModels.BaseLineLSTMModel
     optimizer: SelectableOptimizer = SelectableOptimizer.Adam
     loss: SelectableLoss = SelectableLoss.CrossEntropy

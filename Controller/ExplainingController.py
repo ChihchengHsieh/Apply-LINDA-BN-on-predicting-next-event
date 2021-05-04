@@ -370,6 +370,8 @@ class ExplainingController:
         n_steps: int = None,
         use_argmax=False,
     ):
+        data = data.to(self.device)
+
         if not n_steps is None:
             # Predict for n steps
             predicted_list = self.model.predict_next_n(

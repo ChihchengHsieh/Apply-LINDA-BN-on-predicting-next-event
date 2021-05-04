@@ -5,7 +5,6 @@ from datetime import datetime
 from IPython.core.display import display, HTML
 from Controller.ExplainingController import ExplainingController
 import os
-import pyAgrum.lib.notebook
 
 def main():
     dataset = BPI2012Dataset(
