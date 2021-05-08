@@ -1,3 +1,4 @@
+from Utils.VocabDict import VocabDict
 from CustomExceptions.Exceptions import NotSupportedError
 from json import load
 from typing import Iterable, List, Tuple, Union
@@ -5,22 +6,16 @@ from pandas.core.frame import DataFrame
 import torch
 import pandas as pd
 from torch.jit import Error
-from torch.utils.data import Dataset, DataLoader
-import pm4py
-from datetime import timedelta
-import numpy as np
+from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence, pack_sequence, pad_packed_sequence
 import torch.nn.functional as F
-from Utils.Constants import Constants
 from Utils.FileUtils import file_exists
 import json
-import os
-from Parameters.Enums import PreprocessedDfType
 
 
 class PredictingJsonDataset(Dataset):
 
-    def __init__(self, standard_dataset: Dataset, predicting_file_path: str) -> None:
+    def __init__(self, vocab: VocabDict, predicting_file_path: str ,device: torch.device = torch.device("cpu")) -> None:
         '''
         Expect file structure:
         {
@@ -28,7 +23,8 @@ class PredictingJsonDataset(Dataset):
         }
         '''
         super().__init__()
-        self.standard_dataset = standard_dataset
+        self.device = device
+        self.vocab = vocab
         self.predicting_file_path = predicting_file_path
 
         with open(self.predicting_file_path, "r") as file:
@@ -46,9 +42,9 @@ class PredictingJsonDataset(Dataset):
     def collate_fn(self, data: list[Tuple[str, list[str]]]):
         caseids, seq = zip(*data)
 
-        seq = [self.standard_dataset.list_of_vocab_to_index(l) for l in seq]
+        seq = [self.vocab.list_of_vocab_to_index(l) for l in seq]
 
-        return self.standard_dataset.tranform_to_input_data_from_seq_idx_with_caseid(
+        return self.vocab.tranform_to_input_data_from_seq_idx_with_caseid(
             caseids, seq)
 
         # return sorted_caseids, pad_sequence(sorted_seq_list, batch_first=True, padding_value=0), torch.tensor(sorted_seq_lens)

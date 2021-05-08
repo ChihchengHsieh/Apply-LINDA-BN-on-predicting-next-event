@@ -1,0 +1,47 @@
+{
+	"load_model_folder_path": null,
+	"load_optimizer": true,
+	"dataset": "BPI2012",
+	"model": "BaseLineLSTMModel",
+	"optimizer": "Adam",
+	"loss": "CrossEntropy",
+	"stop_epoch": 100,
+	"batch_size": 64,
+	"verbose_freq": 100,
+	"run_validation_freq": 200,
+	"train_test_split_portion": [
+		0.8,
+		0.1
+	],
+	"dataset_split_seed": 12345,
+	"BPI2012": {
+		"BPI2012_include_types": [
+			"A",
+			"O",
+			"W"
+		]
+	},
+	"OptimizerParameters": {
+		"learning_rate": 0.005,
+		"l2": 1e-06,
+		"scheduler": "StepScheduler",
+		"lr_scheduler_step": 1000,
+		"lr_scheduler_gamma": 0.85,
+		"SGD_momentum": 0.9
+	},
+	"BaseNNModelParams": {
+		"hidden_dim": [
+			16,
+			16,
+			16,
+			16
+		]
+	},
+	"BaselineLSTMModelParameters": {
+		"embedding_dim": 256,
+		"lstm_hidden": 512,
+		"dropout": 0.2,
+		"num_lstm_layers": 2
+	},
+	"max_eos_predicted_length": 50
+}

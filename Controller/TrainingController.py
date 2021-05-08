@@ -40,7 +40,7 @@ from Utils.PrintUtils import (
 class TrainingController:
     def __init__(self):
         # determine the device
-        self.device: str = torch.device(
+        self.device: torch.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"
         )
 

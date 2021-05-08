@@ -15,22 +15,20 @@ from Utils.FileUtils import file_exists
 import json
 import os
 from Parameters.Enums import PreprocessedDfType, ActivityType
-from enum import Enum
-
 
 
 class BPI2012Dataset(Dataset):
     pickle_df_file_name = "df.pickle"
     vocab_dict_file_name = "vocab_dict.json"
 
-    def __init__(self, filePath: str, preprocessed_folder_path: str, preprocessed_df_type: PreprocessedDfType, include_types: list[ActivityType] = [ActivityType.A, ActivityType.W, ActivityType.O]) -> None:
+    def __init__(self, filePath: str, preprocessed_folder_path: str, preprocessed_df_type: PreprocessedDfType, device: torch.device = torch.device("cpu"), include_types: list[ActivityType] = [ActivityType.A, ActivityType.W, ActivityType.O]) -> None:
         super().__init__()
-
+        self.device = device
         self.filePath = filePath
         self.preprocessed_folder_path = os.path.join(
             preprocessed_folder_path, BPI2012Dataset.get_type_folder_name(include_types))
         self.preprocessed_df_type = preprocessed_df_type
-        self.vocab_dict: dict(str, int)
+        self.vocab_dict: dict[str, int]
         self.df: pd.DataFrame
 
         if (not preprocessed_folder_path is None) and self.preprocessed_data_exist(self.preprocessed_folder_path, self.preprocessed_df_type):
@@ -234,8 +232,7 @@ class BPI2012Dataset(Dataset):
 
         return pad_sequence(sorted_seq_list, batch_first=True, padding_value=0), torch.tensor(sorted_seq_lens)
 
-    @staticmethod
-    def collate_fn(data: list[pd.Series]) -> Iterable[Union[np.ndarray, torch.Tensor, torch.Tensor, np.ndarray]]:
+    def collate_fn(self, data: list[pd.Series]) -> Iterable[Union[np.ndarray, torch.Tensor, torch.Tensor, np.ndarray]]:
         caseid_list, seq_list = zip(
             *[(d["caseid"], torch.tensor(d["trace"])) for d in data])
         caseid_list = list(caseid_list)
@@ -265,4 +262,4 @@ class BPI2012Dataset(Dataset):
         padded_target = pad_sequence(
             target_seq_list, batch_first=True, padding_value=0)
 
-        return sorted_case_id, padded_data, padded_target, torch.tensor(data_seq_length)
+        return sorted_case_id, padded_data.to(self.device), torch.tensor(data_seq_length).to(self.device),padded_target.to(self.device)
