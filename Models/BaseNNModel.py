@@ -4,7 +4,7 @@ import torch.nn as nn
 from itertools import chain
 
 class BaseNNModel(nn.Module, ControllerModel):
-    def __init__(self, num_input_features, hidden_dim: list[int] = []):
+    def __init__(self, num_input_features, hidden_dim: list[int] = [], dropout: float = 0.1):
         super(BaseNNModel, self).__init__()
         output_dim = 1
 
@@ -36,7 +36,7 @@ class BaseNNModel(nn.Module, ControllerModel):
         --------------
         return: accuracy value
         '''
-        return  torch.mean(((out > 0.5).float() == target).float())
+        return  torch.mean(((out > 0.5).squeeze().float() == target).float())
 
     def get_loss(self, loss_fn: callable, out, target):
         '''
@@ -63,10 +63,24 @@ class BaseNNModel(nn.Module, ControllerModel):
         '''
         if type(m) in [nn.Conv2d, nn.ConvTranspose2d, nn.Linear, nn.Conv1d]:
             # nn.init.kaiming_normal_(m.weight, 0.2, nonlinearity='leaky_relu')
-            nn.init.xavier_normal(m.weight)
+            nn.init.xavier_normal_(m.weight)
         elif type(m) in [nn.LSTM]:
             for name, value in m.named_parameters():
                 if 'weight' in name:
                     nn.init.xavier_normal_(value.data)
                 if 'bias' in name:
                     value.data.normal_()
+
+    def get_prediction_list_from_out(self, out, mask=None):
+        return (out >0.5).float().tolist()
+
+    def get_target_list_from_target(self, target, mask=None):
+        return target.tolist()
+
+    def generate_mask(self, target):
+        return None
+
+    def get_labels(self):
+        return ["True","False"]
+
+    

@@ -491,5 +491,26 @@ class BaselineLSTMModel_V2(nn.Module, ControllerModel):
         return saving_dest
 
     
+    def get_prediction_list_from_out(self, out, mask=None):
+        predicted = torch.argmax(out, dim=-1)  # (B, S)
+        selected_predictions = torch.masked_select(
+            predicted, mask)
+
+        return selected_predictions.tolist()
+
+    def get_target_list_from_target(self, target, mask=None):
+        selected_targets = torch.masked_select(
+            target, mask
+        )
+        return selected_targets.tolist()
+
+    def generate_mask(self, target):
+        return target > 0
+
+    def get_labels(self):
+        return self.vocab.vocab_dict.keys()
+
+
+    
 
     

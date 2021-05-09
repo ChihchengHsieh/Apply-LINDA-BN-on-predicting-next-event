@@ -9,13 +9,15 @@ import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
+import seaborn as sn
+import pandas as pd
 
 from typing import Tuple
 from datetime import datetime
 from torch.utils.data import DataLoader
 from Controller.TrainingRecord import TrainingRecord
 from CustomExceptions.Exceptions import NotSupportedError
-import Models
 from Parameters.TrainingParameters import TrainingParameters
 from Data import BPI2012Dataset_V2, DiabeteDataset
 from Parameters.Enums import (
@@ -49,6 +51,7 @@ class TrainingController_V2:
         self.device: str = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"
         )
+        self.plot_cm = TrainingParameters.plot_cm
 
         print_big("Running on %s " % (self.device))
 
@@ -67,7 +70,6 @@ class TrainingController_V2:
 
         ############ Load model and optimizer ############
         if not TrainingParameters.load_model_folder_path is None:
-
             ############ Load trained if specified ############
             self.load_trained_model(
                 TrainingParameters.load_model_folder_path,
@@ -77,6 +79,7 @@ class TrainingController_V2:
                 self.__intialise_optimizer()
         else:
             ############ Load empty model ############
+            print_big("Model initialised")
             self.__initialise_model()
             self.__intialise_optimizer()
 
@@ -133,10 +136,12 @@ class TrainingController_V2:
         self.train_data_loader = DataLoader(
             self.train_dataset,
             batch_size=TrainingParameters.batch_size,
-            shuffle=True,
+            shuffle=self.train_dataset.dataset.get_train_shuffle(),
             collate_fn=self.dataset.collate_fn,
+            sampler= self.train_dataset.dataset.get_sampler_from_df(self.train_dataset[:])
             # num_workers=4,
             # worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed()) % (2**32-1)),
+
         )
         self.validation_data_loader = DataLoader(
             self.validation_dataset,
@@ -166,10 +171,12 @@ class TrainingController_V2:
         elif TrainingParameters.model == SelectableModels.BaseNNModel:
             self.model = BaseNNModel(
                 num_input_features= self.dataset.num_features(),
-                hidden_dim = TrainingParameters.BaseNNModelParams.hidden_dim
+                hidden_dim = TrainingParameters.BaseNNModelParams.hidden_dim,
+                dropout = TrainingParameters.BaseNNModelParams.dropout
             )
         else:
             raise NotSupportedError("Model you selected is not supported")
+        self.model.to(self.device)
 
     def __intialise_optimizer(
         self,
@@ -215,14 +222,12 @@ class TrainingController_V2:
         # Setting up loss
         if TrainingParameters.loss == SelectableLoss.CrossEntropy:
             self.loss = nn.CrossEntropyLoss(
-                size_average=True,
                 reduction="mean",
                 ignore_index=self.dataset.vocab.padding_index(),
             )
         elif TrainingParameters.loss == SelectableLoss.BCE:
             self.loss = nn.BCELoss(
-                size_average=True,
-                reduction="mena",
+                reduction="mean",
             )
         else:
             raise NotSupportedError(
@@ -240,7 +245,7 @@ class TrainingController_V2:
             for _, train_data in enumerate(
                 self.train_data_loader
             ):
-                train_loss, train_accuracy = self.train_step(
+                _, train_loss, train_accuracy = self.train_step(
                     train_data
                 )
                 self.__steps += 1
@@ -265,7 +270,7 @@ class TrainingController_V2:
                     (
                         validation_loss,
                         validation_accuracy,
-                    ) = self.perform_eval_on_dataloader(self.validation_data_loader)
+                    ) = self.perform_eval_on_dataloader(self.validation_data_loader, show_report=False)
                     self.record.record_training_info(
                         train_accuracy=train_accuracy,
                         train_loss=train_loss,
@@ -288,16 +293,18 @@ class TrainingController_V2:
         """
         Return is a tuple of (loss, accuracy)
         """
-        target = data[-1]
         self.model.train()
         self.opt.zero_grad()
-        loss, accuracy = self.step(data)
+        out, loss, accuracy = self.step(data)
+        self.data = data
+        self.out = out
+        self.loss_value = loss
         loss.backward()
         self.opt.step()
         if not self.scheduler is None:
             self.scheduler.step()
         
-        return loss.item(), accuracy.item()
+        return out, loss.item(), accuracy.item()
 
     def step(self, data):
         # Make sure the last item in data is target
@@ -305,7 +312,7 @@ class TrainingController_V2:
         out = self.model.data_forward(data)
         loss = self.model.get_loss(self.loss, out, target)
         accuracy = self.model.get_accuracy(out, target)
-        return loss, accuracy
+        return out, loss, accuracy
 
     def eval_step(
         self, data
@@ -313,38 +320,66 @@ class TrainingController_V2:
         """
         Return is a tuple of (loss, accuracy)
         """
-        target = data[-1]
         self.model.eval()
-        loss, accuracy = self.step(data)
-        return loss.item(), accuracy.item()
+        out, loss, accuracy = self.step(data)
+        return out, loss.item(), accuracy.item()
 
     def perform_eval_on_testset(self):
         print_peforming_task("Testing")
         _, self.test_accuracy = self.perform_eval_on_dataloader(
-            self.test_data_loader)
+            self.test_data_loader, show_report=True)
 
-    def perform_eval_on_dataloader(self, dataloader: DataLoader) -> Tuple[float, float]:
+    def perform_eval_on_dataloader(self, dataloader: DataLoader, show_report:bool=False) -> Tuple[float, float]:
         all_loss = []
         all_accuracy = []
         all_batch_size = []
+        all_predictions = []
+        all_targets = []
         for _, data in enumerate(dataloader):
-            loss, accuracy = self.eval_step(data)
+            target = data[-1]
+            mask = self.model.generate_mask(target)
+            out, loss, accuracy = self.eval_step(data)
+            all_predictions.extend(self.model.get_prediction_list_from_out(out, mask ))
+            all_targets.extend(self.model.get_target_list_from_target(target, mask))
             all_loss.append(loss)
             all_accuracy.append(accuracy)
             all_batch_size.append(len(data[-1]))
 
-        mean_accuracy = (
-            torch.tensor(all_accuracy) * torch.tensor(all_batch_size)
-        ).sum() / len(dataloader.dataset)
+        accuracy = accuracy_score(all_targets, all_predictions)
         mean_loss = (torch.tensor(all_loss) * torch.tensor(all_batch_size)).sum() / len(
             dataloader.dataset
         )
-
+        
         print_big(
-            "Evaluation result | Accuracy [%.4f] | Loss [%.4f]"
-            % (mean_accuracy, mean_loss)
+            "Evaluation result | Loss [%.4f] | Accuracy [%.4f] "
+            % (mean_loss, accuracy)
         )
-        return mean_loss.item(), mean_accuracy.item()
+
+        
+        if (show_report):
+            print_big("Classification Report")
+            report = classification_report(all_targets, all_predictions, zero_division=0, output_dict=True, labels=list(range(len(self.model.get_labels()))),target_names=list(self.model.get_labels()))
+            print(pd.DataFrame(report))
+
+            print_big("Confusion Matrix")
+            self.plot_confusion_matrix(all_targets, all_predictions)
+
+        return mean_loss.item(), accuracy
+
+    def plot_confusion_matrix(self, targets: list[int], predictions:  list[int]):
+        # Plot the cufusion matrix
+        cm = confusion_matrix(targets, predictions, labels=list(
+            range(len(self.model.get_labels()))))
+        df_cm = pd.DataFrame(cm, index=list(
+            self.model.get_labels()), columns=list(self.model.get_labels()))
+
+        if (self.plot_cm):
+            plt.figure(figsize=(40, 40), dpi=100)
+            sn.heatmap(df_cm / np.sum(cm), annot=True, fmt='.2%')
+        else:
+            print("="*20)
+            print(df_cm)
+            print("="*20)
 
     #######################################
     #   Utils
@@ -487,7 +522,7 @@ class TrainingController_V2:
             parameters = json.load(output_file)
         return parameters
 
-    def load_trained_model(self, folder_path: str, load_optimizer: bool, parameters):
+    def load_trained_model(self, folder_path: str, load_optimizer: bool, parameters= None):
         records_loading_path = os.path.join(
             folder_path, TrainingRecord.records_save_file_name
         )
@@ -504,17 +539,21 @@ class TrainingController_V2:
         model_loading_path = os.path.join(
             folder_path, self.model_save_file_name)
         checkpoint = torch.load(
-            model_loading_path, map_location=torch.device(self.device))
+            model_loading_path, map_location=self.device)
         self.model.load_state_dict(checkpoint["model_state_dict"])
+        self.model.to(self.device)
 
         if load_optimizer:
             # Create optimizer according to the parameters
             self.__build_optimizer_with_parameters(parameters)
-            self.opt.load_state_dict(checkpoint["optimizer_state_dict"])
+            self.opt.load_state_dict(checkpoint["optimizer_state_dict"],)
             self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+
 
         self.__epoch = checkpoint["epoch"]
         self.__steps = checkpoint["steps"]
+
+        del checkpoint
 
         print_big("Model loaded successfully from: %s " % (folder_path))
 
@@ -584,8 +623,10 @@ class TrainingController_V2:
         self.train_data_loader = DataLoader(
             self.train_dataset,
             batch_size=parameters["batch_size"],
-            shuffle=True,
+            shuffle=self.train_dataset.dataset.get_train_shuffle(),
             collate_fn=self.dataset.collate_fn,
+            sampler= self.train_dataset.dataset.get_sampler_from_df(self.train_dataset[:])
+
             # num_workers=4,
             # worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed()) % (2**32-1)),
         )
@@ -631,8 +672,9 @@ class TrainingController_V2:
 
         elif selectedModel == SelectableModels.BaseNNModel:
             self.model = BaseNNModel(
-                num_input_features=self.dataset.num_features,
-                hidden_dim=  TrainingParameters.BaseNNModelParams.hidden_dim
+                num_input_features=self.dataset.num_features(),
+                hidden_dim=  parameters["BaseNNModelParams"]["hidden_dim"],
+                dropout = parameters["BaseNNModelParams"]["dropout"],
             )
         
         else:

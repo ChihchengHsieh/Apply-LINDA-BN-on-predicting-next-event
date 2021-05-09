@@ -1,0 +1,14 @@
+{
+	"train_accuracy_records": [
+		0.774509847164154
+	],
+	"train_loss_records": [
+		0.4760427176952362
+	],
+	"validation_acuuracy_records": [
+		0.7307692307692307
+	],
+	"validation_loss_records": [
+		0.5802976489067078
+	]
+}

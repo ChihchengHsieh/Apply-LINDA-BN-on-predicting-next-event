@@ -205,7 +205,7 @@ class BPI2012Dataset_V2(Dataset):
         sorted_len_index = np.flip(np.argsort(seq_lens_before_splitting))
 
         ############ Sort caseids and traces ############
-        sorted_seq_list = [torch.tensor(seq_list[idx])
+        sorted_seq_list = [seq_list[idx]
                            for idx in sorted_len_index]
         sorted_case_id = np.array(caseid_list)[sorted_len_index]
 
@@ -226,3 +226,9 @@ class BPI2012Dataset_V2(Dataset):
             target_seq_list, batch_first=True, padding_value=0)
 
         return sorted_case_id, padded_data.to(self.device), torch.tensor(data_seq_length).to(self.device),padded_target.to(self.device)
+
+    def get_sampler_from_df(self, df):
+        return None
+
+    def get_train_shuffle(self):
+        return True
