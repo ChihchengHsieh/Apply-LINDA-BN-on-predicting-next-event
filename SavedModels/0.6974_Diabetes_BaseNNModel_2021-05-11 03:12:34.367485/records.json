@@ -1,0 +1,6 @@
+{
+	"train_accuracy_records": [],
+	"train_loss_records": [],
+	"validation_acuuracy_records": [],
+	"validation_loss_records": []
+}

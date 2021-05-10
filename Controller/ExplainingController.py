@@ -26,9 +26,11 @@ from Parameters.PredictingParameters import PredictingParameters
 from Utils.SaveUtils import get_json_dict
 
 
-
-
 class ExplainingController:
+    ###############################################
+    #   Initialisation
+    ###############################################
+
     def __init__(self) -> None:
         self.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu")
@@ -180,6 +182,10 @@ class ExplainingController:
         else:
             raise NotSupportedError(
                 "Loss function you selected is not supported")
+
+    ############################################################
+    #   Utils
+    ############################################################
 
     def show_model_info(self):
 

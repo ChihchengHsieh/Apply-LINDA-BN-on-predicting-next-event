@@ -11,11 +11,6 @@ class PredictingParameters(object):
     ######################################
     # Parameters for predicting
     ######################################
-
-    bpi_2012_path: str = './datasets/event_logs/BPI_Challenge_2012.xes'
-    preprocessed_bpi_2012_folder_path = './datasets/preprocessed/BPI_Challenge_2012'
-    preprocessed_df_type: PreprocessedDfType = PreprocessedDfType.Pickle
-
     dataset_split_seed = 12345
 
     # Must set
