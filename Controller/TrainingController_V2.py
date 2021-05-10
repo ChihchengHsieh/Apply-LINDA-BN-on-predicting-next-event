@@ -156,7 +156,7 @@ class TrainingController_V2:
             batch_size=TrainingParameters.batch_size,
             shuffle=self.train_dataset.dataset.get_train_shuffle(),
             collate_fn=self.dataset.collate_fn,
-            sampler= self.train_dataset.dataset.get_sampler_from_df(self.train_dataset[:])
+            sampler= self.train_dataset.dataset.get_sampler_from_df(self.train_dataset[:], TrainingParameters.dataset_split_seed)
             # num_workers=4,
             # worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed()) % (2**32-1)),
 
@@ -585,22 +585,39 @@ class TrainingController_V2:
         exact same data (Prevent the training data to infect testing data).
         [parameters]: parameters containing all the training information.
         '''
-
         selectedDataset = SelectableDatasets[parameters["dataset"]]
 
         ########################################
         # Load dataset
         ########################################
         if selectedDataset == SelectableDatasets.BPI2012:
-            self.dataset = BPI2012Dataset_V2(
-                filePath=EnviromentParameters.BPI2020Dataset.bpi_2012_path,
+            self.dataset = XESDataset(
+                device=self.device,
+                file_path=EnviromentParameters.BPI2020Dataset.file_path,
                 preprocessed_folder_path=EnviromentParameters.BPI2020Dataset.preprocessed_foldr_path,
                 preprocessed_df_type=EnviromentParameters.BPI2020Dataset.preprocessed_df_type,
+                include_types=TrainingParameters.BPI2012.BPI2012_include_types,
             )
-
         elif selectedDataset == SelectableDatasets.Diabetes:
             self.dataset = MedicalDataset(
-                file_path=EnviromentParameters.DiabetesDataset.file_path
+                device=self.device,
+                file_path= EnviromentParameters.DiabetesDataset.file_path,
+                feature_names=EnviromentParameters.DiabetesDataset.feature_names,
+                target_col_name=EnviromentParameters.DiabetesDataset.target_name
+            )
+        elif selectedDataset == SelectableDatasets.Helpdesk:
+            self.dataset = XESDataset(
+                device=self.device,
+                file_path=EnviromentParameters.HelpDeskDataset.file_path,
+                preprocessed_folder_path=EnviromentParameters.HelpDeskDataset.preprocessed_foldr_path,
+                preprocessed_df_type=EnviromentParameters.HelpDeskDataset.preprocessed_df_type,
+            )
+        elif selectedDataset == SelectableDatasets.BreastCancer:
+            self.dataset = MedicalDataset(
+                device=self.device,
+                file_path= EnviromentParameters.BreastCancerDataset.file_path,
+                feature_names=EnviromentParameters.BreastCancerDataset.feature_names,
+                target_col_name=EnviromentParameters.BreastCancerDataset.target_name
             )
         else:
             raise NotSupportedError("Dataset you selected is not supported")
@@ -642,8 +659,7 @@ class TrainingController_V2:
             batch_size=parameters["batch_size"],
             shuffle=self.train_dataset.dataset.get_train_shuffle(),
             collate_fn=self.dataset.collate_fn,
-            sampler= self.train_dataset.dataset.get_sampler_from_df(self.train_dataset[:])
-
+            sampler= self.train_dataset.dataset.get_sampler_from_df(self.train_dataset[:], parameters["dataset_split_seed"])
             # num_workers=4,
             # worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed()) % (2**32-1)),
         )

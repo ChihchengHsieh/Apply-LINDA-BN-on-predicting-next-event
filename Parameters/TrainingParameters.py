@@ -29,15 +29,15 @@ class TrainingParameters(object):
     ######################################
     # Selectables
     #####################################
-    dataset: SelectableDatasets = SelectableDatasets.Helpdesk
-    model: SelectableModels = SelectableModels.BaseLineLSTMModel
-    loss: SelectableLoss = SelectableLoss.CrossEntropy
+    dataset: SelectableDatasets = SelectableDatasets.Diabetes
+    model: SelectableModels = SelectableModels.BaseNNModel
+    loss: SelectableLoss = SelectableLoss.BCE
     optimizer: SelectableOptimizer = SelectableOptimizer.Adam
 
     ######################################
     # Count 
     ######################################
-    stop_epoch: int = 1000
+    stop_epoch: int = 10
     batch_size: int = 128
     verbose_freq: int = 250 # in step
     run_validation_freq: int = 500  # in step

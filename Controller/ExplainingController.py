@@ -23,9 +23,11 @@ import pydotplus as dot
 from IPython.core.display import SVG
 from torch.utils.data import DataLoader
 
-
-
 class ExplainingController:
+    ###############################################
+    #   Initialisation
+    ###############################################
+
     def __init__(self) -> None:
         self.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu")
@@ -177,6 +179,10 @@ class ExplainingController:
         else:
             raise NotSupportedError(
                 "Loss function you selected is not supported")
+
+    ############################################################
+    #   Utils
+    ############################################################
 
     def show_model_info(self):
 

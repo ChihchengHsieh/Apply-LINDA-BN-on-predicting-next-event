@@ -111,7 +111,7 @@ class XESDataset(Dataset):
         return self.df.iloc[index]
 
     @staticmethod
-    def get_type_folder_name(include_types: list[ActivityType]):
+    def get_type_folder_name(include_types: list[ActivityType] = None):
         if include_types is None:
             return "All"
 
@@ -231,7 +231,7 @@ class XESDataset(Dataset):
 
         return sorted_case_id, padded_data.to(self.device), torch.tensor(data_seq_length).to(self.device),padded_target.to(self.device)
 
-    def get_sampler_from_df(self, df):
+    def get_sampler_from_df(self, df, seed):
         return None
 
     def get_train_shuffle(self):
