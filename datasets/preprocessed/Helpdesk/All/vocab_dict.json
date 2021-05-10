@@ -1,0 +1,19 @@
+{
+	"<EOS>": 1,
+	"<SOS>": 2,
+	"Assign seriousness_complete": 3,
+	"Closed_complete": 4,
+	"Create SW anomaly_complete": 5,
+	"DUPLICATE_complete": 6,
+	"INVALID_complete": 7,
+	"Insert ticket_complete": 8,
+	"RESOLVED_complete": 9,
+	"Require upgrade_complete": 10,
+	"Resolve SW anomaly_complete": 11,
+	"Resolve ticket_complete": 12,
+	"Schedule intervention_complete": 13,
+	"Take in charge ticket_complete": 14,
+	"VERIFIED_complete": 15,
+	"Wait_complete": 16,
+	"<PAD>": 0
+}

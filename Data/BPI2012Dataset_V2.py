@@ -19,7 +19,7 @@ class BPI2012Dataset_V2(Dataset):
     pickle_df_file_name = "df.pickle"
     vocab_dict_file_name = "vocab_dict.json"
 
-    def __init__(self, file_path: str, preprocessed_folder_path: str, preprocessed_df_type: PreprocessedDfType, device: torch.device = torch.device("cpu"), include_types: list[ActivityType] = [ActivityType.A, ActivityType.W, ActivityType.O]) -> None:
+    def __init__(self, file_path: str, preprocessed_folder_path: str, preprocessed_df_type: PreprocessedDfType, device: torch.device = torch.device("cpu"), include_types: list[ActivityType] = None) -> None:
         super().__init__()
         self.device = device
         self.file_path = file_path

@@ -1,3 +1,4 @@
+from Data.XESDataset import XESDataset
 import os
 import sys
 import json
@@ -19,7 +20,7 @@ from torch.utils.data import DataLoader
 from Controller.TrainingRecord import TrainingRecord
 from CustomExceptions.Exceptions import NotSupportedError
 from Parameters.TrainingParameters import TrainingParameters
-from Data import BPI2012Dataset_V2, DiabeteDataset
+from Data import BPI2012Dataset_V2, MedicalDataset
 from Parameters.Enums import (
     SelectableDatasets,
     SelectableLoss,
@@ -91,7 +92,7 @@ class TrainingController_V2:
     def __intialise_dataset(self):
         ############ Determine dataset ############
         if TrainingParameters.dataset == SelectableDatasets.BPI2012:
-            self.dataset = BPI2012Dataset_V2(
+            self.dataset = XESDataset(
                 device=self.device,
                 file_path=EnviromentParameters.BPI2020Dataset.file_path,
                 preprocessed_folder_path=EnviromentParameters.BPI2020Dataset.preprocessed_foldr_path,
@@ -99,9 +100,26 @@ class TrainingController_V2:
                 include_types=TrainingParameters.BPI2012.BPI2012_include_types,
             )
         elif TrainingParameters.dataset == SelectableDatasets.Diabetes:
-            self.dataset = DiabeteDataset(
+            self.dataset = MedicalDataset(
                 device=self.device,
-                file_path= EnviromentParameters.DiabetesDataset.file_path
+                file_path= EnviromentParameters.DiabetesDataset.file_path,
+                feature_names=EnviromentParameters.DiabetesDataset.feature_names,
+                target_col_name=EnviromentParameters.DiabetesDataset.target_name
+            )
+        elif TrainingParameters.dataset == SelectableDatasets.Helpdesk:
+            self.dataset = XESDataset(
+                device=self.device,
+                file_path=EnviromentParameters.HelpDeskDataset.file_path,
+                preprocessed_folder_path=EnviromentParameters.HelpDeskDataset.preprocessed_foldr_path,
+                preprocessed_df_type=EnviromentParameters.HelpDeskDataset.preprocessed_df_type,
+            )
+        elif TrainingParameters.dataset == SelectableDatasets.BreastCancer:
+            self.dataset = MedicalDataset(
+                device=self.device,
+                file_path= EnviromentParameters.BreastCancerDataset.file_path,
+                feature_names=EnviromentParameters.BreastCancerDataset.feature_names,
+                target_col_name=EnviromentParameters.BreastCancerDataset.target_name
+
             )
         else:
             raise NotSupportedError("Dataset you selected is not supported")
@@ -349,12 +367,11 @@ class TrainingController_V2:
         mean_loss = (torch.tensor(all_loss) * torch.tensor(all_batch_size)).sum() / len(
             dataloader.dataset
         )
-        
+
         print_big(
             "Evaluation result | Loss [%.4f] | Accuracy [%.4f] "
             % (mean_loss, accuracy)
         )
-
         
         if (show_report):
             print_big("Classification Report")
@@ -582,7 +599,7 @@ class TrainingController_V2:
             )
 
         elif selectedDataset == SelectableDatasets.Diabetes:
-            self.dataset = DiabeteDataset(
+            self.dataset = MedicalDataset(
                 file_path=EnviromentParameters.DiabetesDataset.file_path
             )
         else:
