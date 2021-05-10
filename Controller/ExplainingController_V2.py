@@ -99,6 +99,10 @@ class ExplainingController:
             folder_path, self.model.model_save_file_name)
         checkpoint = torch.load(
             model_loading_path, map_location=torch.device(self.device))
+        # TODO:
+        # Mean and vriance will be calculated by standard scaler, but mean and variance will be store in the model.
+        # The data will only be normalized when it's in the model?.
+        # create data_forward for input normal data, and forward for input normalised data
         self.model.load_state_dict(checkpoint["model_state_dict"])
         self.model.to(self.device)
 
