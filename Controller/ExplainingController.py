@@ -22,6 +22,9 @@ import pyAgrum.lib.notebook as gnb
 import pydotplus as dot
 from IPython.core.display import SVG
 from torch.utils.data import DataLoader
+from Parameters.PredictingParameters import PredictingParameters
+from Utils.SaveUtils import get_json_dict
+
 
 
 
@@ -304,12 +307,17 @@ class ExplainingController:
         return outputstring
 
     def save_html(self, html_content: str):
+        ## TODO: Save the data, target and predicted list.
+
+        # Save the model as well.
+        # Save current prediting parameters
+        parameters: str  = json.dumps(get_json_dict(PredictingParameters))
         path_to_explanation = './Explanations'
         os.makedirs(path_to_explanation, exist_ok=True)
         save_path = os.path.join(
             path_to_explanation, '%s_graphs_LINDA-BN.html' % (datetime.now()))
         with open(save_path, 'w')as output_file:
-            output_file.write(html_content)
+            output_file.write( "<h1>Parameters</h1>" + parameters  +("<br/>"*3) + html_content)
 
         print_big("HTML page has been saved to: %s" % (save_path))
 
