@@ -510,6 +510,15 @@ class BaselineLSTMModel_V2(nn.Module, ControllerModel):
     def get_labels(self):
         return self.vocab.vocab_dict.keys()
 
+    def get_mean_and_variance(self,df, device):
+        pass
+    
+    def should_load_mean_and_vairance(self):
+        return False
+
+    def has_mean_and_variance(self,):
+        return False 
+
 
     
 

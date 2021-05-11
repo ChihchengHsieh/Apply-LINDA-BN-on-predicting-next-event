@@ -22,8 +22,8 @@ class TrainingParameters(object):
     # Load
     ########################
 
-    # load_model_folder_path: str = "SavedModels/0.7237_Diabetes_BaseNNModel_2021-05-10 02:57:11.018429" # Set to None to not loading pre-trained model.
-    load_model_folder_path: str = None # Set to None to not loading pre-trained model.
+    load_model_folder_path: str = "SavedModels/0.6974_Diabetes_BaseNNModel_2021-05-11 17:34:13.220265" # Set to None to not loading pre-trained model.
+    # load_model_folder_path: str = None # Set to None to not loading pre-trained model.
     load_optimizer: bool = True
 
     ######################################
@@ -37,7 +37,7 @@ class TrainingParameters(object):
     ######################################
     # Count 
     ######################################
-    stop_epoch: int = 10
+    stop_epoch: int = 30
     batch_size: int = 128
     verbose_freq: int = 250 # in step
     run_validation_freq: int = 500  # in step

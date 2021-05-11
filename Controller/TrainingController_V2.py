@@ -87,6 +87,10 @@ class TrainingController_V2:
         ############ move model to device ############
         self.model.to(self.device)
 
+        ############ Normalise input data ############
+        if self.model.should_load_mean_and_vairance():
+            self.model.get_mean_and_variance(self.train_dataset[:], self.device)
+
         self.__initialise_loss_fn()
 
     def __intialise_dataset(self):
@@ -100,6 +104,7 @@ class TrainingController_V2:
                 include_types=TrainingParameters.BPI2012.BPI2012_include_types,
             )
         elif TrainingParameters.dataset == SelectableDatasets.Diabetes:
+            self.feature_names = EnviromentParameters.DiabetesDataset.feature_names
             self.dataset = MedicalDataset(
                 device=self.device,
                 file_path= EnviromentParameters.DiabetesDataset.file_path,
@@ -114,12 +119,12 @@ class TrainingController_V2:
                 preprocessed_df_type=EnviromentParameters.HelpDeskDataset.preprocessed_df_type,
             )
         elif TrainingParameters.dataset == SelectableDatasets.BreastCancer:
+            self.feature_names = EnviromentParameters.BreastCancerDataset.feature_names
             self.dataset = MedicalDataset(
                 device=self.device,
                 file_path= EnviromentParameters.BreastCancerDataset.file_path,
                 feature_names=EnviromentParameters.BreastCancerDataset.feature_names,
                 target_col_name=EnviromentParameters.BreastCancerDataset.target_name
-
             )
         else:
             raise NotSupportedError("Dataset you selected is not supported")
@@ -188,7 +193,7 @@ class TrainingController_V2:
             )
         elif TrainingParameters.model == SelectableModels.BaseNNModel:
             self.model = BaseNNModel(
-                num_input_features= self.dataset.num_features(),
+                feature_names= self.feature_names,
                 hidden_dim = TrainingParameters.BaseNNModelParams.hidden_dim,
                 dropout = TrainingParameters.BaseNNModelParams.dropout
             )
@@ -501,14 +506,21 @@ class TrainingController_V2:
         model_saving_path = os.path.join(
             saving_folder_path, self.model_save_file_name
         )
-        torch.save(
-            {
+
+        save_dict = {
                 "model_state_dict": self.model.state_dict(),
                 "optimizer_state_dict": self.opt.state_dict(),
                 "scheduler_state_dict": self.scheduler.state_dict(),
                 "epoch": self.__epoch,
                 "steps": self.__steps,
-            },
+        }
+
+        if (self.model.has_mean_and_variance()):
+            save_dict["mean_"] = self.model.mean_
+            save_dict["var_"] = self.model.var_
+
+        torch.save(
+            save_dict,
             model_saving_path,
         )
 
@@ -570,6 +582,10 @@ class TrainingController_V2:
         self.__epoch = checkpoint["epoch"]
         self.__steps = checkpoint["steps"]
 
+        if ("mean_"  in checkpoint) and "var_" in checkpoint:
+            self.model.mean_ = checkpoint["mean_"] 
+            self.model.var_ = checkpoint["var_"] 
+
         del checkpoint
 
         print_big("Model loaded successfully from: %s " % (folder_path))
@@ -599,6 +615,7 @@ class TrainingController_V2:
                 include_types=TrainingParameters.BPI2012.BPI2012_include_types,
             )
         elif selectedDataset == SelectableDatasets.Diabetes:
+            self.feature_names = EnviromentParameters.DiabetesDataset.feature_names
             self.dataset = MedicalDataset(
                 device=self.device,
                 file_path= EnviromentParameters.DiabetesDataset.file_path,
@@ -613,6 +630,7 @@ class TrainingController_V2:
                 preprocessed_df_type=EnviromentParameters.HelpDeskDataset.preprocessed_df_type,
             )
         elif selectedDataset == SelectableDatasets.BreastCancer:
+            self.feature_names = EnviromentParameters.BreastCancerDataset.feature_names
             self.dataset = MedicalDataset(
                 device=self.device,
                 file_path= EnviromentParameters.BreastCancerDataset.file_path,
@@ -705,7 +723,7 @@ class TrainingController_V2:
 
         elif selectedModel == SelectableModels.BaseNNModel:
             self.model = BaseNNModel(
-                num_input_features=self.dataset.num_features(),
+                feature_names= self.feature_names,
                 hidden_dim=  parameters["BaseNNModelParams"]["hidden_dim"],
                 dropout = parameters["BaseNNModelParams"]["dropout"],
             )

@@ -1,4 +1,5 @@
 from torch.jit import Error
+import Models
 from Models.BaseNNModel import BaseNNModel
 from Models import BaselineLSTMModel_V2
 from Utils.VocabDict import VocabDict
@@ -32,8 +33,6 @@ from Parameters import EnviromentParameters
 
 
 class ExplainingController:
-
-
     ######################################
     #   Initialisation
     ######################################
@@ -46,6 +45,19 @@ class ExplainingController:
             PredictingParameters.load_model_folder_path
         )
 
+        self.__initialise_data()
+        
+        # Load trained model
+        if not PredictingParameters.load_model_folder_path is None:
+            self.load_trained_model(
+                PredictingParameters.load_model_folder_path)
+        else:
+            raise Exception(
+                "You need to specify the path to load the trained model")
+
+        self.__initialise_loss_fn()
+
+    def __initialise_data(self):
         # Load vocab dict
         dataset = SelectableDatasets[self.training_parameters["dataset"]]
         ############# Sequential dataset need to load vocab #############
@@ -66,20 +78,13 @@ class ExplainingController:
             with open(vocab_dict_path, 'r') as output_file:
                 vocab_dict = json.load(output_file)
                 self.vocab = VocabDict(vocab_dict)
-        elif dataset in [SelectableDatasets.Diabetes, SelectableDatasets.BreastCancer]:
-            pass
+        elif dataset  == SelectableDatasets.Diabetes:
+            self.feature_names =  EnviromentParameters.DiabetesDataset.feature_names
+        elif dataset == SelectableDatasets.BreastCancer:
+            self.feature_names = EnviromentParameters.BreastCancerDataset.feature_names
         else:
             raise NotSupportedError("Dataset you selected is not supported")
 
-        # Load trained model
-        if not PredictingParameters.load_model_folder_path is None:
-            self.load_trained_model(
-                PredictingParameters.load_model_folder_path)
-        else:
-            raise Exception(
-                "You need to specify the path to load the trained model")
-
-        self.__initialise_loss_fn()
 
     def load_training_parameters(self, folder_path: str):
         parameters_loading_path = os.path.join(
@@ -104,6 +109,10 @@ class ExplainingController:
         # The data will only be normalized when it's in the model?.
         # create data_forward for input normal data, and forward for input normalised data
         self.model.load_state_dict(checkpoint["model_state_dict"])
+        if (self.model.should_load_mean_and_vairance()):
+            self.model.mean_ = checkpoint["mean_"]
+            self.model.var_ = checkpoint["var_"]
+
         self.model.to(self.device)
 
         print_big("Model loaded successfully")
@@ -115,8 +124,8 @@ class ExplainingController:
         to load trained weight.
         [parameters]: parameters containing all the training information.
         '''
-
         selectedModel: SelectableModels = SelectableModels[parameters["model"]]
+
         ##########################
         # Build models
         ##########################
@@ -135,7 +144,7 @@ class ExplainingController:
 
         elif selectedModel == SelectableModels.BaseNNModel:
             self.model = BaseNNModel(
-                num_input_features=self.dataset.num_features(),
+                feature_names= self.feature_names,
                 hidden_dim=  parameters["BaseNNModelParams"]["hidden_dim"],
                 dropout = parameters["BaseNNModelParams"]["dropout"],
             )
@@ -146,7 +155,14 @@ class ExplainingController:
     def __initialise_loss_fn(self):
         # Setting up loss
         if PredictingParameters.loss == SelectableLoss.CrossEntropy:
-            self.loss = nn.CrossEntropyLoss()
+            self.loss = nn.CrossEntropyLoss(
+                reduction="mean",
+                ignore_index=self.dataset.vocab.padding_index(),
+            )
+        elif PredictingParameters.loss == SelectableLoss.BCE:
+            self.loss = nn.BCELoss(
+                reduction="mean",
+            )
         else:
             raise NotSupportedError(
                 "Loss function you selected is not supported")
@@ -205,14 +221,21 @@ class ExplainingController:
         os.remove(file_path)
         return data_predicted_list, gnb.getBN(bn), inference, infoBN, markov_blanket_html
     
-    def medical_predict_lindaBN_explain(self, data=):
+    def medical_predict_lindaBN_explain(self, data):
         if not self.model is BaseNNModel:
             raise NotSupportedError("Unsupported model")
 
+        ###### Scale the input ######
+        norm_data = self.model.normalize_input(data)
+
+        ###### Get prediction ######         
+        predicted_value = self.model(norm_data)
+
+
         ##################### Make prediction first #####################
-        self.model.
+        predicted_value = self.model.data_forward(data)
 
-
+        
 
 
         pass
