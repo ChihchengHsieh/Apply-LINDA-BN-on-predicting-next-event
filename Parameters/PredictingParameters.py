@@ -16,7 +16,7 @@ class PredictingParameters(object):
     # Must set
     # load_model_folder_path: str = "./SavedModels/0.8534_2021-04-14 12:07:55.613864"  # AWO
     # load_model_folder_path: str = "./SavedModels/0.8524_2021-05-04 22:56:36.630971"  # WO
-    load_model_folder_path: str = "./SavedModels/0.8343_2021-05-04 23:37:50.983155"  # A
+    load_model_folder_path: str = "./SavedModels/0.8318_BPI2012_BaseLineLSTMModel_2021-05-10 04:35:30.266388"  # A
 
     max_eos_predicted_length = 50
     

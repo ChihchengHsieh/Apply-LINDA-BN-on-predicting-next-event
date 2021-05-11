@@ -1,4 +1,5 @@
 
+from torch._C import device
 from Models.ControllerModel import ControllerModel
 from Utils.VocabDict import VocabDict
 import json
@@ -22,9 +23,10 @@ class BaselineLSTMModel_V2(nn.Module, ControllerModel):
     LSTM model for predicing sequetial data.
     '''
 
-    def __init__(self, vocab: VocabDict, embedding_dim: int,  lstm_hidden: int, dropout: float, num_lstm_layers: int):
+    def __init__(self, device: torch.device, vocab: VocabDict, embedding_dim: int,  lstm_hidden: int, dropout: float, num_lstm_layers: int):
         super(BaselineLSTMModel_V2, self).__init__()
         self.vocab = vocab
+        self.device = device
         self.emb = nn.Embedding(len(vocab), embedding_dim, self.vocab.padding_index())
         self.lstm = nn.LSTM(embedding_dim, lstm_hidden, batch_first=True,
                             dropout=dropout, num_layers=num_lstm_layers)
@@ -43,6 +45,8 @@ class BaselineLSTMModel_V2(nn.Module, ControllerModel):
 
         ############ Initialise weigth ############
         self.apply(self.weight_init)
+
+        self.to(self.device)
 
     def forward(self, input: torch.tensor, lengths: np.ndarray = None, prev_hidden_states: Tuple[torch.tensor] = None) -> Tuple[torch.tensor, Tuple[torch.tensor, torch.tensor]]:
         '''
@@ -360,12 +364,13 @@ class BaselineLSTMModel_V2(nn.Module, ControllerModel):
         '''
 
         ######### To sort the input by lengths and get lengths #########
-        data, lengths = self.tranform_to_input_data_from_seq_idx(data)
+        _, data, lengths = self.vocab.tranform_to_input_data_from_seq_idx_with_caseid(data)
 
         ######### Predict #########
         predicted_list = self.predict(
-            data=data, lengths=lengths, n_steps=n_steps, use_argmax=use_argmax
+            input=data.to(self.device), lengths=lengths.to(self.device), n_steps=n_steps, use_argmax=use_argmax
         )
+
 
         return predicted_list
 
@@ -386,7 +391,7 @@ class BaselineLSTMModel_V2(nn.Module, ControllerModel):
         '''
 
         ######### Transform to index #########
-        data = [self.list_of_vocab_to_index(l) for l in data]
+        data = [self.vocab.list_of_vocab_to_index(l) for l in data]
 
         ######### Predict #########
         predicted_list = self.predicting_from_list_of_idx_trace(
@@ -395,7 +400,7 @@ class BaselineLSTMModel_V2(nn.Module, ControllerModel):
         
         ######### Tranform back to vocab #########
         predicted_list = [
-            self.list_of_index_to_vocab(l) for l in predicted_list
+            self.vocab.list_of_index_to_vocab(l) for l in predicted_list
         ]
 
         return predicted_list

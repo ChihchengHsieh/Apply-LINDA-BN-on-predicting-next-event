@@ -107,5 +107,8 @@ class BaseNNModel(nn.Module, ControllerModel):
     def normalize_input(self, input):
         return (input - self.mean_) / torch.sqrt(self.var_)
 
+    def reverse_normalize_input(self, input):
+        return (input * torch.sqrt(self.var_)) + self.mean_
+
 
     

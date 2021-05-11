@@ -185,6 +185,7 @@ class TrainingController_V2:
         # Setting up model
         if TrainingParameters.model == SelectableModels.BaseLineLSTMModel:
             self.model = BaselineLSTMModel_V2(
+                device=self.device,
                 vocab=self.dataset.vocab,
                 embedding_dim=TrainingParameters.BaselineLSTMModelParameters.embedding_dim,
                 lstm_hidden=TrainingParameters.BaselineLSTMModelParameters.lstm_hidden,
@@ -612,7 +613,7 @@ class TrainingController_V2:
                 file_path=EnviromentParameters.BPI2020Dataset.file_path,
                 preprocessed_folder_path=EnviromentParameters.BPI2020Dataset.preprocessed_foldr_path,
                 preprocessed_df_type=EnviromentParameters.BPI2020Dataset.preprocessed_df_type,
-                include_types=TrainingParameters.BPI2012.BPI2012_include_types,
+                include_types=parameters["BPI2012"]["BPI2012_include_types"],
             )
         elif selectedDataset == SelectableDatasets.Diabetes:
             self.feature_names = EnviromentParameters.DiabetesDataset.feature_names
@@ -710,6 +711,7 @@ class TrainingController_V2:
         ##########################
         if selectedModel == SelectableModels.BaseLineLSTMModel:
             self.model = BaselineLSTMModel_V2(
+                device=self.device,
                 vocab=self.dataset.vocab,
                 embedding_dim=parameters["BaselineLSTMModelParameters"][
                     "embedding_dim"

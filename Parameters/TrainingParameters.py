@@ -22,22 +22,22 @@ class TrainingParameters(object):
     # Load
     ########################
 
-    load_model_folder_path: str = "SavedModels/0.6974_Diabetes_BaseNNModel_2021-05-11 17:34:13.220265" # Set to None to not loading pre-trained model.
+    load_model_folder_path: str = "SavedModels/0.8318_BPI2012_BaseLineLSTMModel_2021-05-10 04:35:30.266388" # Set to None to not loading pre-trained model.
     # load_model_folder_path: str = None # Set to None to not loading pre-trained model.
     load_optimizer: bool = True
 
     ######################################
     # Selectables
     #####################################
-    dataset: SelectableDatasets = SelectableDatasets.Diabetes
-    model: SelectableModels = SelectableModels.BaseNNModel
-    loss: SelectableLoss = SelectableLoss.BCE
+    dataset: SelectableDatasets = SelectableDatasets.BPI2012
+    model: SelectableModels = SelectableModels.BaseLineLSTMModel
+    loss: SelectableLoss = SelectableLoss.CrossEntropy
     optimizer: SelectableOptimizer = SelectableOptimizer.Adam
 
     ######################################
     # Count 
     ######################################
-    stop_epoch: int = 30
+    stop_epoch: int = 500
     batch_size: int = 128
     verbose_freq: int = 250 # in step
     run_validation_freq: int = 500  # in step

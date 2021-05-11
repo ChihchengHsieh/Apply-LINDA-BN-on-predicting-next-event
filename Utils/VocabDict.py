@@ -40,7 +40,7 @@ class VocabDict:
         seq_lens = np.array([len(s)for s in seq_list])
         sorted_len_index = np.flip(np.argsort(seq_lens))
         sorted_seq_lens = [seq_lens[idx] for idx in sorted_len_index]
-        sorted_seq_list = [seq_list[idx]
+        sorted_seq_list = [torch.tensor(seq_list[idx])
                            for idx in sorted_len_index]
 
         if (caseids):

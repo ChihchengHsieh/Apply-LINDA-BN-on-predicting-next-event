@@ -32,11 +32,12 @@ from Data import BPI2012Dataset_V2, XESDataset
 from Parameters import EnviromentParameters
 
 
-class ExplainingController:
+class ExplainingController_V2:
+    model_save_file_name = "model.pt"
+
     ######################################
     #   Initialisation
     ######################################
-
     def __init__(self) -> None:
         self.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu")
@@ -65,7 +66,7 @@ class ExplainingController:
             vocab_dict_path = os.path.join(
                 EnviromentParameters.BPI2020Dataset.preprocessed_foldr_path,
                 XESDataset.get_type_folder_name([ActivityType[t]
-                                                     for t in self.training_parameters["BPI2012_include_types"]]),
+                                                     for t in self.training_parameters["BPI2012"]["BPI2012_include_types"]]),
                 XESDataset.vocab_dict_file_name)
             with open(vocab_dict_path, 'r') as output_file:
                 vocab_dict = json.load(output_file)
@@ -80,8 +81,10 @@ class ExplainingController:
                 self.vocab = VocabDict(vocab_dict)
         elif dataset  == SelectableDatasets.Diabetes:
             self.feature_names =  EnviromentParameters.DiabetesDataset.feature_names
+            self.target_name = EnviromentParameters.DiabetesDataset.target_name
         elif dataset == SelectableDatasets.BreastCancer:
             self.feature_names = EnviromentParameters.BreastCancerDataset.feature_names
+            self.target_name = EnviromentParameters.BreastCancerDataset.target_name
         else:
             raise NotSupportedError("Dataset you selected is not supported")
 
@@ -101,7 +104,7 @@ class ExplainingController:
 
         # Load model
         model_loading_path = os.path.join(
-            folder_path, self.model.model_save_file_name)
+            folder_path, self.model_save_file_name)
         checkpoint = torch.load(
             model_loading_path, map_location=torch.device(self.device))
         # TODO:
@@ -114,6 +117,7 @@ class ExplainingController:
             self.model.var_ = checkpoint["var_"]
 
         self.model.to(self.device)
+        self.model.eval()
 
         print_big("Model loaded successfully")
 
@@ -131,6 +135,7 @@ class ExplainingController:
         ##########################
         if selectedModel == SelectableModels.BaseLineLSTMModel:
             self.model = BaselineLSTMModel_V2(
+                device=self.device,
                 vocab=self.vocab,
                 embedding_dim=parameters["BaselineLSTMModelParameters"][
                     "embedding_dim"
@@ -157,7 +162,7 @@ class ExplainingController:
         if PredictingParameters.loss == SelectableLoss.CrossEntropy:
             self.loss = nn.CrossEntropyLoss(
                 reduction="mean",
-                ignore_index=self.dataset.vocab.padding_index(),
+                ignore_index=self.model.vocab.padding_index(),
             )
         elif PredictingParameters.loss == SelectableLoss.BCE:
             self.loss = nn.BCELoss(
@@ -172,7 +177,7 @@ class ExplainingController:
     #################################
     def pm_predict_lindaBN_explain(self, data: list[str], n_steps=1, use_argmax=True):
 
-        if not self.model is BaselineLSTMModel_V2:
+        if not type(self.model) == BaselineLSTMModel_V2:
             raise NotSupportedError("Unsupported model")
 
         data_predicted_list: list[int] = self.model.predicting_from_list_of_vacab_trace(
@@ -193,7 +198,7 @@ class ExplainingController:
 
         # Convert to vocab list
         predicted_vocab_list = [
-            self.list_of_index_to_vocab(p) for p in predicted_list]
+            self.model.vocab.list_of_index_to_vocab(p) for p in predicted_list]
 
         col_names = ["step_%d" % (i+1) for i in range(len(data))] + \
             ["predict_%d" % (n+1) for n in range(n_steps)]
@@ -221,8 +226,8 @@ class ExplainingController:
         os.remove(file_path)
         return data_predicted_list, gnb.getBN(bn), inference, infoBN, markov_blanket_html
     
-    def medical_predict_lindaBN_explain(self, data):
-        if not self.model is BaseNNModel:
+    def medical_predict_lindaBN_explain(self, data, num_samples_per_feature, variance = 0.5, number_of_bins = 5):
+        if not type(self.model) == BaseNNModel:
             raise NotSupportedError("Unsupported model")
 
         ###### Scale the input ######
@@ -231,14 +236,56 @@ class ExplainingController:
         ###### Get prediction ######         
         predicted_value = self.model(norm_data)
 
+        #################### Generate permutations ####################
+        all_permutations = permute.generate_permutation_for_numerical(norm_data.squeeze(), num_samples_per_feature=num_samples_per_feature, variance=variance )
 
-        ##################### Make prediction first #####################
-        predicted_value = self.model.data_forward(data)
+        ################## Predict permutations ##################
+        all_permutations_t = torch.cat(all_permutations, dim = 0).float()
+        all_predictions = self.model(all_permutations_t)
 
+        self.all_predictions = all_predictions
+
+        ################## Descretise numerical ##################
+        reversed_permutations_t =  self.model.reverse_normalize_input(all_permutations_t)
+        permutations_df = pd.DataFrame(reversed_permutations_t.tolist(), columns= self.feature_names)
+        q = np.array(range(number_of_bins+1))/(1.0*number_of_bins)
+        cat_df_list = []
+        for col in permutations_df.columns.values:
+            if col!= self.target_name:
+                cat_df_list.append( pd.DataFrame( pd.qcut( permutations_df[col],q, duplicates='drop',precision=2),columns=[col]))
+            else:
+                cat_df_list.append( pd.DataFrame( permutations_df[col].values,columns=[col]))
+
+        cat_df = pd.concat(cat_df_list, join="outer", axis = 1)
         
+        ########### add predicted value ###########
+        cat_df[self.target_name] = (all_predictions > 0.5).squeeze().tolist()
 
+         # Save the predicted and prediction to path
+        os.makedirs('./Permutations', exist_ok=True)
+        file_path = './Permutations/%s_permuted.csv' % str(datetime.now())
 
-        pass
+        cat_df.to_csv(file_path, index=False)
+
+        self.cat_df = cat_df
+
+        bn, infoBN, essenceGraph = learn.learnBN(
+            file_path, algorithm=learn.BN_Algorithm.HillClimbing)
+
+        # compute Markov Blanket
+        markov_blanket = gum.MarkovBlanket(bn, self.target_name)
+        markov_blanket_dot = dot.graph_from_dot_data(markov_blanket.toDot())
+        markov_blanket_dot.set_bgcolor("transparent")
+        markov_blanket_html = SVG(markov_blanket_dot.create_svg()).data
+
+        # inference = gnb.getInference(
+        #     bn, evs={self.target_name: to_infer}, targets=cat_df.columns.values, size="70")
+
+        inference = gnb.getInference(
+            bn, evs={}, targets=cat_df.columns.values, size="70")
+
+        os.remove(file_path)
+        return predicted_value, gnb.getBN(bn), inference, infoBN, markov_blanket_html
 
     ############################
     #   Utils
