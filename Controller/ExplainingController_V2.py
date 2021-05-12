@@ -225,7 +225,7 @@ class ExplainingController_V2:
         os.remove(file_path)
         return df_to_dump, data_predicted_list, bn, gnb.getBN(bn), inference, infoBN, markov_blanket_html
 
-    def medical_predict_lindaBN_explain(self, data, num_samples_per_feature, variance=0.5, number_of_bins=5):
+    def medical_predict_lindaBN_explain(self, data, num_samples, variance=0.5, number_of_bins=5):
         if not type(self.model) == BaseNNModel:
             raise NotSupportedError("Unsupported model")
 
@@ -236,11 +236,13 @@ class ExplainingController_V2:
         predicted_value = self.model(norm_data)
 
         #################### Generate permutations ####################
-        all_permutations = permute.generate_permutation_for_numerical_all_dim(
-            norm_data.squeeze(), num_samples_per_feature=num_samples_per_feature, variance=variance)
+        all_permutations_t = permute.generate_permutation_for_numerical_all_dim(
+            norm_data.squeeze(), num_samples=num_samples, variance=variance)
+
+        # self.all_permutations = all_permutations
 
         ################## Predict permutations ##################
-        all_permutations_t = torch.cat(all_permutations, dim=0).float()
+        # all_permutations_t = torch.cat(all_permutations, dim=0).float()
         all_predictions = self.model(all_permutations_t)
 
         self.all_predictions = all_predictions
@@ -289,7 +291,7 @@ class ExplainingController_V2:
             bn, evs={}, targets=cat_df.columns.values, size="70")
 
         os.remove(file_path)
-        return predicted_value, gnb.getBN(bn), inference, infoBN, markov_blanket_html
+        return cat_df, predicted_value, bn, gnb.getBN(bn), inference, infoBN, markov_blanket_html
 
     ############################
     #   Utils
