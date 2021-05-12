@@ -18,7 +18,7 @@ from typing import Tuple
 from datetime import datetime
 from torch.utils.data import DataLoader
 from Controller.TrainingRecord import TrainingRecord
-from CustomExceptions.Exceptions import NotSupportedError
+from CustomExceptions import NotSupportedError
 from Parameters.TrainingParameters import TrainingParameters
 from Data import MedicalDataset
 from Parameters.Enums import (

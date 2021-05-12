@@ -1,23 +1,17 @@
 from torch.jit import Error
-import Models
 from Models.BaseNNModel import BaseNNModel
 from Models import BaselineLSTMModel_V2
 from Utils.VocabDict import VocabDict
 from datetime import datetime
 from LINDA_BN import learn, permute
-from typing import Tuple
 
-from torch.nn.utils.rnn import pad_sequence
-from Utils.Constants import Constants
-from Models.BaselineLSMTModel import BaselineLSTMModel
-from Utils.PrintUtils import print_big, print_peforming_task, print_taks_done
+from Utils.PrintUtils import print_big
 from Parameters.Enums import ActivityType, SelectableDatasets, SelectableLoss, SelectableModels
-from Data.BPI2012Dataset import BPI2012Dataset
 import torch
 from Parameters.PredictingParameters import PredictingParameters
 import os
 import json
-from CustomExceptions.Exceptions import NotSupportedError
+from CustomExceptions import NotSupportedError
 import torch.nn as nn
 import sys
 import numpy as np
@@ -26,8 +20,7 @@ import pyAgrum as gum
 import pyAgrum.lib.notebook as gnb
 import pydotplus as dot
 from IPython.core.display import SVG
-from torch.utils.data import DataLoader
-from Data import BPI2012Dataset_V2, XESDataset
+from Data import  XESDataset
 
 from Parameters import EnviromentParameters
 

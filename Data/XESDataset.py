@@ -1,6 +1,6 @@
 from Utils.VocabDict import VocabDict
 from Utils.PrintUtils import print_big
-from CustomExceptions.Exceptions import NotSupportedError
+from CustomExceptions import NotSupportedError
 import torch
 import pandas as pd
 from torch.jit import Error

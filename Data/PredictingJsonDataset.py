@@ -1,15 +1,6 @@
 from Utils.VocabDict import VocabDict
-from CustomExceptions.Exceptions import NotSupportedError
-from json import load
-from typing import Iterable, List, Tuple, Union
-from pandas.core.frame import DataFrame
 import torch
-import pandas as pd
-from torch.jit import Error
 from torch.utils.data import Dataset
-from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence, pack_sequence, pad_packed_sequence
-import torch.nn.functional as F
-from Utils.FileUtils import file_exists
 import json
 
 
@@ -32,14 +23,14 @@ class PredictingJsonDataset(Dataset):
 
         self.data = [(k, v) for k, v in retrieved_dict.items()]
 
-    def __getitem__(self, index: int) -> Tuple[str, List[str]]:
+    def __getitem__(self, index: int) -> tuple[str, list[str]]:
         d = self.data[index]
         return d[0], d[1]
 
     def __len__(self) -> int:
         return len(self.data)
 
-    def collate_fn(self, data: list[Tuple[str, list[str]]]):
+    def collate_fn(self, data: list[tuple[str, list[str]]]):
         caseids, seq = zip(*data)
 
         seq = [self.vocab.list_of_vocab_to_index(l) for l in seq]
