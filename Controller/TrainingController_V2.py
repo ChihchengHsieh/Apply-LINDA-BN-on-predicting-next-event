@@ -20,7 +20,7 @@ from torch.utils.data import DataLoader
 from Controller.TrainingRecord import TrainingRecord
 from CustomExceptions.Exceptions import NotSupportedError
 from Parameters.TrainingParameters import TrainingParameters
-from Data import BPI2012Dataset_V2, MedicalDataset
+from Data import MedicalDataset
 from Parameters.Enums import (
     SelectableDatasets,
     SelectableLoss,

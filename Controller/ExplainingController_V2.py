@@ -47,7 +47,7 @@ class ExplainingController_V2:
         )
 
         self.__initialise_data()
-        
+
         # Load trained model
         if not PredictingParameters.load_model_folder_path is None:
             self.load_trained_model(
@@ -66,12 +66,12 @@ class ExplainingController_V2:
             vocab_dict_path = os.path.join(
                 EnviromentParameters.BPI2020Dataset.preprocessed_foldr_path,
                 XESDataset.get_type_folder_name([ActivityType[t]
-                                                     for t in self.training_parameters["BPI2012"]["BPI2012_include_types"]]),
+                                                 for t in self.training_parameters["BPI2012"]["BPI2012_include_types"]]),
                 XESDataset.vocab_dict_file_name)
             with open(vocab_dict_path, 'r') as output_file:
                 vocab_dict = json.load(output_file)
                 self.vocab = VocabDict(vocab_dict)
-        elif dataset == SelectableDatasets.Helpdesk: 
+        elif dataset == SelectableDatasets.Helpdesk:
             vocab_dict_path = os.path.join(
                 EnviromentParameters.HelpDeskDataset.preprocessed_foldr_path,
                 XESDataset.get_type_folder_name(),
@@ -79,15 +79,14 @@ class ExplainingController_V2:
             with open(vocab_dict_path, 'r') as output_file:
                 vocab_dict = json.load(output_file)
                 self.vocab = VocabDict(vocab_dict)
-        elif dataset  == SelectableDatasets.Diabetes:
-            self.feature_names =  EnviromentParameters.DiabetesDataset.feature_names
+        elif dataset == SelectableDatasets.Diabetes:
+            self.feature_names = EnviromentParameters.DiabetesDataset.feature_names
             self.target_name = EnviromentParameters.DiabetesDataset.target_name
         elif dataset == SelectableDatasets.BreastCancer:
             self.feature_names = EnviromentParameters.BreastCancerDataset.feature_names
             self.target_name = EnviromentParameters.BreastCancerDataset.target_name
         else:
             raise NotSupportedError("Dataset you selected is not supported")
-
 
     def load_training_parameters(self, folder_path: str):
         parameters_loading_path = os.path.join(
@@ -119,7 +118,7 @@ class ExplainingController_V2:
         self.model.to(self.device)
         self.model.eval()
 
-        print_big("Model loaded successfully")
+        print_big("Model loaded successfully from %s" % (model_loading_path))
 
     def __buid_model_with_parameters(self, parameters):
         '''
@@ -149,11 +148,11 @@ class ExplainingController_V2:
 
         elif selectedModel == SelectableModels.BaseNNModel:
             self.model = BaseNNModel(
-                feature_names= self.feature_names,
-                hidden_dim=  parameters["BaseNNModelParams"]["hidden_dim"],
-                dropout = parameters["BaseNNModelParams"]["dropout"],
+                feature_names=self.feature_names,
+                hidden_dim=parameters["BaseNNModelParams"]["hidden_dim"],
+                dropout=parameters["BaseNNModelParams"]["dropout"],
             )
-        
+
         else:
             raise NotSupportedError("Model you selected is not supported")
 
@@ -221,47 +220,52 @@ class ExplainingController_V2:
         markov_blanket_html = SVG(markov_blanket_dot.create_svg()).data
 
         inference = gnb.getInference(
-            bn, evs={col_names[-1]: to_infer_vocab}, targets=col_names, size="70")
+            bn, evs={}, targets=col_names, size="70")
 
         os.remove(file_path)
-        return data_predicted_list, gnb.getBN(bn), inference, infoBN, markov_blanket_html
-    
-    def medical_predict_lindaBN_explain(self, data, num_samples_per_feature, variance = 0.5, number_of_bins = 5):
+        return df_to_dump, data_predicted_list, bn, gnb.getBN(bn), inference, infoBN, markov_blanket_html
+
+    def medical_predict_lindaBN_explain(self, data, num_samples_per_feature, variance=0.5, number_of_bins=5):
         if not type(self.model) == BaseNNModel:
             raise NotSupportedError("Unsupported model")
 
         ###### Scale the input ######
         norm_data = self.model.normalize_input(data)
 
-        ###### Get prediction ######         
+        ###### Get prediction ######
         predicted_value = self.model(norm_data)
 
         #################### Generate permutations ####################
-        all_permutations = permute.generate_permutation_for_numerical(norm_data.squeeze(), num_samples_per_feature=num_samples_per_feature, variance=variance )
+        all_permutations = permute.generate_permutation_for_numerical_all_dim(
+            norm_data.squeeze(), num_samples_per_feature=num_samples_per_feature, variance=variance)
 
         ################## Predict permutations ##################
-        all_permutations_t = torch.cat(all_permutations, dim = 0).float()
+        all_permutations_t = torch.cat(all_permutations, dim=0).float()
         all_predictions = self.model(all_permutations_t)
 
         self.all_predictions = all_predictions
 
         ################## Descretise numerical ##################
-        reversed_permutations_t =  self.model.reverse_normalize_input(all_permutations_t)
-        permutations_df = pd.DataFrame(reversed_permutations_t.tolist(), columns= self.feature_names)
+        reversed_permutations_t = self.model.reverse_normalize_input(
+            all_permutations_t)
+        permutations_df = pd.DataFrame(
+            reversed_permutations_t.tolist(), columns=self.feature_names)
         q = np.array(range(number_of_bins+1))/(1.0*number_of_bins)
         cat_df_list = []
         for col in permutations_df.columns.values:
-            if col!= self.target_name:
-                cat_df_list.append( pd.DataFrame( pd.qcut( permutations_df[col],q, duplicates='drop',precision=2),columns=[col]))
+            if col != self.target_name:
+                cat_df_list.append(pd.DataFrame(pd.qcut(
+                    permutations_df[col], q, duplicates='drop', precision=2), columns=[col]))
             else:
-                cat_df_list.append( pd.DataFrame( permutations_df[col].values,columns=[col]))
+                cat_df_list.append(pd.DataFrame(
+                    permutations_df[col].values, columns=[col]))
 
-        cat_df = pd.concat(cat_df_list, join="outer", axis = 1)
-        
+        cat_df = pd.concat(cat_df_list, join="outer", axis=1)
+
         ########### add predicted value ###########
         cat_df[self.target_name] = (all_predictions > 0.5).squeeze().tolist()
 
-         # Save the predicted and prediction to path
+        # Save the predicted and prediction to path
         os.makedirs('./Permutations', exist_ok=True)
         file_path = './Permutations/%s_permuted.csv' % str(datetime.now())
 
@@ -305,6 +309,7 @@ class ExplainingController_V2:
         )
 
         self.record.plot_records()
+
     def generate_html_page_from_graphs(self, bn, inference, infoBN, markov_blanket):
         outputstring: str = "<h1 style=\"text-align: center\">BN</h1>" \
                             + "<div style=\"text-align: center\">" + bn + "</div>"\
