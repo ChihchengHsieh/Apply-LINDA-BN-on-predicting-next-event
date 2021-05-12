@@ -5,5 +5,5 @@
     "python.linting.pylintArgs":[
         "--disable-msg=not-callable"
     ],
-    "python.pythonPath": "/Users/jrhs/.pyenv/versions/3.9.4/envs/dl/bin/python"
+    "python.pythonPath": "/home/jrhs/.pyenv/versions/3.9.4/envs/dl/bin/python"
 }

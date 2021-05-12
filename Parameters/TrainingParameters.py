@@ -22,22 +22,22 @@ class TrainingParameters(object):
     # Load
     ########################
 
-    load_model_folder_path: str = "SavedModels/0.8318_BPI2012_BaseLineLSTMModel_2021-05-10 04:35:30.266388" # Set to None to not loading pre-trained model.
-    # load_model_folder_path: str = None # Set to None to not loading pre-trained model.
+    # load_model_folder_path: str = "SavedModels/0.8318_BPI2012_BaseLineLSTMModel_2021-05-10 04:35:30.266388" # Set to None to not loading pre-trained model.
+    load_model_folder_path: str = None # Set to None to not loading pre-trained model.
     load_optimizer: bool = True
 
     ######################################
     # Selectables
     #####################################
-    dataset: SelectableDatasets = SelectableDatasets.BPI2012
-    model: SelectableModels = SelectableModels.BaseLineLSTMModel
-    loss: SelectableLoss = SelectableLoss.CrossEntropy
+    dataset: SelectableDatasets = SelectableDatasets.BreastCancer
+    model: SelectableModels = SelectableModels.BaseNNModel
+    loss: SelectableLoss = SelectableLoss.BCE
     optimizer: SelectableOptimizer = SelectableOptimizer.Adam
 
     ######################################
     # Count 
     ######################################
-    stop_epoch: int = 500
+    stop_epoch: int = 1000
     batch_size: int = 128
     verbose_freq: int = 250 # in step
     run_validation_freq: int = 500  # in step
@@ -46,15 +46,20 @@ class TrainingParameters(object):
     # Dataset
     ######################################
     train_test_split_portion = [0.8, 0.1] # Remaining will be used for validation.
-    dataset_split_seed = 1234
+    dataset_split_seed = 12345
 
     class BPI2012(object):
-        BPI2012_include_types = [ActivityType.A]
+        BPI2012_include_types = [ActivityType.A, ActivityType.O, ActivityType.W]
 
     class OptimizerParameters(object):
         """
         It will be override once you have load_model and load_optimizer = True
         """
+        ###### XES ######
+        # learning_rate: float = 0.005
+        # l2: float = 0.00000001
+
+        ###### Medical ######
         learning_rate: float = 0.005
         l2: float = 0.001
 
@@ -72,9 +77,9 @@ class TrainingParameters(object):
         """
         It will be override once you have load_model
         """
-        embedding_dim: int = 256  # 128
-        lstm_hidden: int = 512  # 256
-        dropout: float = 0.2
+        embedding_dim: int = 128  # 128
+        lstm_hidden: int = 256  # 256
+        dropout: float = 0.1
         num_lstm_layers: int = 2  # 2
 
     ########################

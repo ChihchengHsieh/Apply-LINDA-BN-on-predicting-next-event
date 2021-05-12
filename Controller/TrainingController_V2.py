@@ -354,6 +354,7 @@ class TrainingController_V2:
             self.test_data_loader, show_report=True)
 
     def perform_eval_on_dataloader(self, dataloader: DataLoader, show_report:bool=False) -> Tuple[float, float]:
+        
         all_loss = []
         all_accuracy = []
         all_batch_size = []

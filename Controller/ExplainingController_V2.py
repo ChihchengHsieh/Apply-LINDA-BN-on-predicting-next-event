@@ -305,8 +305,14 @@ class ExplainingController_V2:
 
         self.record.plot_records()
 
-    def generate_html_page_from_graphs(self, bn, inference, infoBN, markov_blanket):
-        outputstring: str = "<h1 style=\"text-align: center\">BN</h1>" \
+    def generate_html_page_from_graphs(self,input, predictedValue, bn, inference, infoBN, markov_blanket):
+        outputstring: str = "<h1 style=\"text-align: center\">Model</h1>" +\
+                            + "<div>" + PredictingParameters.load_model_folder_path + "</div>"\
+                            + "<h1>Input</h1>" \
+                            + "<div>" + input + "</div>"\
+                            + "<h1>Predicted</h1>" \
+                            + "<div>" + predictedValue + "</div>"\
+                            +"<h1 style=\"text-align: center\">BN</h1>" \
                             + "<div style=\"text-align: center\">" + bn + "</div>"\
                             + ('</br>'*5) + "<h1 style=\"text-align: center\">Inference</h1>" \
                             + inference + ('</br>'*5) + "<h1 style=\"text-align: center\">Info BN</h1>"\
@@ -319,7 +325,7 @@ class ExplainingController_V2:
         path_to_explanation = './Explanations'
         os.makedirs(path_to_explanation, exist_ok=True)
         save_path = os.path.join(
-            path_to_explanation, '%s_graphs_LINDA-BN.html' % (datetime.now()))
+            path_to_explanation, '%s_%s_graphs_LINDA-BN.html' % (PredictingParameters.load_model_folder_path, datetime.now()))
         with open(save_path, 'w')as output_file:
             output_file.write(html_content)
 
