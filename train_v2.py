@@ -6,10 +6,7 @@ import sys
 
 def main(argv):
      # Determine if show loaded model info before starting.
-    if ("--model-info" in argv):
-        show_model_info = True
-    else:
-        show_model_info = False
+    show_model_info = True if ("--model-info" in argv) else False
 
     trainer = TrainingController_V2()
 

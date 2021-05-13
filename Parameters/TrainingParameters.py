@@ -9,7 +9,6 @@ from Parameters.Enums import (
     ActivityType
 )
 
-
 class TrainingParameters(object):
     """
     Storing the parameters for controlling the training.
@@ -37,7 +36,7 @@ class TrainingParameters(object):
     ######################################
     # Count 
     ######################################
-    stop_epoch: int = 1000
+    stop_epoch: int = 100
     batch_size: int = 128
     verbose_freq: int = 250 # in step
     run_validation_freq: int = 500  # in step
@@ -56,12 +55,12 @@ class TrainingParameters(object):
         It will be override once you have load_model and load_optimizer = True
         """
         ###### XES ######
-        # learning_rate: float = 0.005
-        # l2: float = 0.00000001
+        learning_rate: float = 0.005
+        l2: float = 0.00000001
 
         ###### Medical ######
-        learning_rate: float = 0.005
-        l2: float = 0.001
+        # learning_rate: float = 0.005
+        # l2: float = 0.001
 
         # Scheduler
         scheduler: SelectableLrScheduler = SelectableLrScheduler.StepScheduler
@@ -77,10 +76,10 @@ class TrainingParameters(object):
         """
         It will be override once you have load_model
         """
-        embedding_dim: int = 128  # 128
-        lstm_hidden: int = 256  # 256
+        embedding_dim: int = 32  # 128
+        lstm_hidden: int = 64  # 256
         dropout: float = 0.1
-        num_lstm_layers: int = 2  # 2
+        num_lstm_layers: int = 1  # 2
 
     ########################
     # Others

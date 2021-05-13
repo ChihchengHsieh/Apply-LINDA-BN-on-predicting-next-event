@@ -298,13 +298,6 @@ class ExplainingController_V2:
         print_big("Loaded model has {%d} parameters" %
                   (self.model.num_all_params()))
 
-        print_big(
-            "Loaded model has been trained for [%d] steps, [%d] epochs"
-            % (self.steps, self.epoch)
-        )
-
-        self.record.plot_records()
-
     def generate_html_page_from_graphs(self,input, predictedValue, bn, inference, infoBN, markov_blanket):
         outputstring: str = "<h1 style=\"text-align: center\">Model</h1>" +\
                             + "<div>" + PredictingParameters.load_model_folder_path + "</div>"\
