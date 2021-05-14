@@ -1,3 +1,4 @@
+from CustomExceptions.Exceptions import PermuatationException
 from torch.jit import Error
 from Models.BaseNNModel import BaseNNModel
 from Models import BaselineLSTMModel_V2
@@ -176,8 +177,10 @@ class ExplainingController_V2:
 
         df_to_dump.to_csv(file_path, index=False)
 
-        bn, infoBN, essenceGraph = learn.learnBN(
+        bn = learn.learnBN(
             file_path, algorithm=learn.BN_Algorithm.HillClimbing)
+
+        infoBN = gnb.getInformation(bn, size=EnviromentParameters.default_graph_size)
 
         # compute Markov Blanket
         markov_blanket = gum.MarkovBlanket(bn, col_names[-1])
@@ -241,9 +244,16 @@ class ExplainingController_V2:
 
         self.cat_df = cat_df
 
-        bn, infoBN, essenceGraph = learn.learnBN(
+        bn = learn.learnBN(
             file_path, algorithm=learn.BN_Algorithm.HillClimbing)
 
+        has_more_than_one_predicted =  len(cat_df[self.target_name].unique()) > 1
+
+        if  not has_more_than_one_predicted:
+            raise PermuatationException("All permutation predict same results. Please increase variance or number of samples")
+
+        infoBN = gnb.getInformation(bn, size=EnviromentParameters.default_graph_size) 
+        
         # compute Markov Blanket
         markov_blanket = gum.MarkovBlanket(bn, self.target_name)
         markov_blanket_dot = dot.graph_from_dot_data(markov_blanket.toDot())
@@ -254,7 +264,7 @@ class ExplainingController_V2:
         #     bn, evs={self.target_name: to_infer}, targets=cat_df.columns.values, size="70")
 
         inference = gnb.getInference(
-            bn, evs={self.target_name: "True"},targets=cat_df.columns.values, size=EnviromentParameters.default_graph_size)
+            bn, evs={self.target_name: "True"} ,targets=cat_df.columns.values, size=EnviromentParameters.default_graph_size)
 
         os.remove(file_path)
         return cat_df, predicted_value, bn, gnb.getBN(bn, size=EnviromentParameters.default_graph_size), inference, infoBN, markov_blanket_html

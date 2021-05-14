@@ -36,7 +36,5 @@ def learnBN(file_path: str, algorithm: BN_Algorithm = BN_Algorithm.HillClimbing)
         raise Exception('Not supported algorithm')
 
     bn = learner.learnBN()
-    essencGraph = gum.EssentialGraph(bn)
-    infoBN = gnb.getInformation(bn, size=EnviromentParameters.default_graph_size)
 
-    return [bn, infoBN, essencGraph]
+    return bn

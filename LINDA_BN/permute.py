@@ -35,11 +35,10 @@ def generate_permutation_for_numerical_all_dim(input_data: torch.tensor, num_sam
     --------------------------
     Return: all permutations.
     '''
-    max_range = torch.clip(input_data + variance , - 0.999, 1).float()
-    min_range = torch.clip(input_data - variance, -1, 0.999).float()
-
+    max_range = torch.clip(input_data + variance , -0.999999, 1).float()
+    min_range = torch.clip(input_data - variance, -1, 0.999999).float()
     dist = Uniform(min_range, max_range)
-    return dist.sample_n(num_samples)
+    return dist.sample((num_samples,))
 
 def generate_permutation_for_trace(trace: np.array, vocab_size: int, last_n_stages_to_permute: int = None):
     # For each stage (activity), we replace it by another.
