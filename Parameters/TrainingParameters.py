@@ -1,4 +1,3 @@
-import json
 from Utils.SaveUtils import get_json_dict
 from dataclasses import dataclass, field
 from Parameters.Enums import (
@@ -9,11 +8,6 @@ from Parameters.Enums import (
     SelectableOptimizer,
     ActivityType
 )
-import os 
-from Parameters.TrainingParameters import TrainingParameters
-from Parameters.EnviromentParameters import EnviromentParameters
-
-
 
 @dataclass
 class BPI2012(object):
@@ -134,16 +128,3 @@ class TrainingParameters(object):
             self.optimizer = SelectableOptimizer[self.optimizer]
 
 
-def save_parameters_json__(path: str, parameters):
-    parameters_dict = get_json_dict(parameters)
-    with open(path, "w") as output_file:
-        json.dump(parameters_dict, output_file, indent="\t")
-
-
-def load_parameters(folder_path: str) -> TrainingParameters:
-    parameters_loading_path = os.path.join(
-        folder_path, EnviromentParameters.parameters_save_file_name__
-    )
-    with open(parameters_loading_path, "r") as output_file:
-        parameters = json.load(output_file)
-    return TrainingParameters(**parameters)

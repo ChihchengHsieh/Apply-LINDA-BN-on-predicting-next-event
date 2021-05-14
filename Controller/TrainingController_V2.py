@@ -68,25 +68,16 @@ class TrainingController_V2(object):
         self.stop_epoch = self.parameters.stop_epoch
 
         self.__intialise_dataset()
-
-
-
         self.__initialise_model()
+        self.__intialise_optimizer()
 
-
-        ############ Load model and optimizer ############
+        ############ Load saved parameters ############
         if not self.parameters.load_model_folder_path is None:
             ############ Load trained if specified ############
             self.load_trained_model(
                 self.parameters.load_model_folder_path,
                 self.parameters.load_optimizer,
             )
-            if not self.parameters.load_optimizer:
-                self.__intialise_optimizer()
-        else:
-            ############ Load empty model ############
-            print_big("Model initialised")
-            self.__intialise_optimizer()
 
         ############ move model to device ############
         self.model.to(self.device)
@@ -535,22 +526,8 @@ class TrainingController_V2(object):
     #########################################
     #   Load
     #########################################
-
-    def resume_training(self, folder_path: str):
-        '''
-        Load a trained model to resume training.
-        Use this function to load `Model`, `Dataset` and `Optimizer` to prevent unwanted result.
-        [folder_path]: path to the trained model.
-        '''
-
-        self.training_parameters = self.load_training_parameters(
-            folder_path=folder_path)
-        self.intialise_dataset_with_parameters(self, self.training_parameters)
-        self.load_trained_model(
-            folder_path=folder_path, load_optimizer=self.parameters.load_optimizer, parameters=self.training_parameters)
-
-
-    def load_trained_model(self, folder_path: str, load_optimizer: bool, parameters= None):
+    
+    def load_trained_model(self, folder_path: str, load_optimizer: bool):
         records_loading_path = os.path.join(
             folder_path, TrainingRecord.records_save_file_name
         )
@@ -565,8 +542,6 @@ class TrainingController_V2(object):
         self.model.to(self.device)
 
         if load_optimizer:
-            # Create optimizer according to the parameters
-            self.__build_optimizer_with_parameters(parameters)
             self.opt.load_state_dict(checkpoint["optimizer_state_dict"],)
             self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
 
@@ -581,154 +556,3 @@ class TrainingController_V2(object):
         del checkpoint
 
         print_big("Model loaded successfully from: %s " % (folder_path))
-
-
-    ################################################
-    # Build with parameters
-    ################################################
-
-    def intialise_dataset_with_parameters(self, parameters):
-        '''
-        When a training process is resumed, this method will be used to load
-        exact same data (Prevent the training data to infect testing data).
-        [parameters]: parameters containing all the training information.
-        '''
-        selectedDataset = SelectableDatasets[parameters["dataset"]]
-
-        ########################################
-        # Load dataset
-        ########################################
-        if selectedDataset == SelectableDatasets.BPI2012:
-            self.dataset = XESDataset(
-                device=self.device,
-                file_path=EnviromentParameters.BPI2020Dataset.file_path,
-                preprocessed_folder_path=EnviromentParameters.BPI2020Dataset.preprocessed_foldr_path,
-                preprocessed_df_type=EnviromentParameters.BPI2020Dataset.preprocessed_df_type,
-                include_types=parameters["BPI2012"]["BPI2012_include_types"],
-            )
-        elif selectedDataset == SelectableDatasets.Diabetes:
-            self.feature_names = EnviromentParameters.DiabetesDataset.feature_names
-            self.dataset = MedicalDataset(
-                device=self.device,
-                file_path= EnviromentParameters.DiabetesDataset.file_path,
-                feature_names=EnviromentParameters.DiabetesDataset.feature_names,
-                target_col_name=EnviromentParameters.DiabetesDataset.target_name
-            )
-        elif selectedDataset == SelectableDatasets.Helpdesk:
-            self.dataset = XESDataset(
-                device=self.device,
-                file_path=EnviromentParameters.HelpDeskDataset.file_path,
-                preprocessed_folder_path=EnviromentParameters.HelpDeskDataset.preprocessed_foldr_path,
-                preprocessed_df_type=EnviromentParameters.HelpDeskDataset.preprocessed_df_type,
-            )
-        elif selectedDataset == SelectableDatasets.BreastCancer:
-            self.feature_names = EnviromentParameters.BreastCancerDataset.feature_names
-            self.dataset = MedicalDataset(
-                device=self.device,
-                file_path= EnviromentParameters.BreastCancerDataset.file_path,
-                feature_names=EnviromentParameters.BreastCancerDataset.feature_names,
-                target_col_name=EnviromentParameters.BreastCancerDataset.target_name
-            )
-        else:
-            raise NotSupportedError("Dataset you selected is not supported")
-
-        ########################################
-        # Determine the size for each dataset
-        ########################################
-
-        train_dataset_len = int(
-            len(self.dataset) * parameters["train_test_split_portion"][0]
-        )
-        test_dataset_len = int(
-            len(self.dataset) * parameters["train_test_split_portion"][-1]
-        )
-        validation_dataset_len = len(self.dataset) - (
-            train_dataset_len + test_dataset_len
-        )
-
-        #######################################
-        # Split dataset
-        #######################################
-        (
-            self.train_dataset,
-            self.validation_dataset,
-            self.test_dataset,
-        ) = torch.utils.data.random_split(
-            dataset=self.dataset,
-            lengths=[train_dataset_len,
-                     validation_dataset_len, test_dataset_len],
-            generator=torch.Generator().manual_seed(
-                parameters["dataset_split_seed"]),
-        )
-
-        #######################################
-        # Create dataloaders
-        #######################################
-        self.train_data_loader = DataLoader(
-            self.train_dataset,
-            batch_size=parameters["batch_size"],
-            shuffle=self.train_dataset.dataset.get_train_shuffle(),
-            collate_fn=self.dataset.collate_fn,
-            sampler= self.train_dataset.dataset.get_sampler_from_df(self.train_dataset[:], parameters["dataset_split_seed"])
-            # num_workers=4,
-            # worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed()) % (2**32-1)),
-        )
-        self.validation_data_loader = DataLoader(
-            self.validation_dataset,
-            batch_size=parameters["batch_size"],
-            shuffle=True,
-            collate_fn=self.dataset.collate_fn,
-        )
-        self.test_data_loader = DataLoader(
-            self.test_dataset,
-            batch_size=parameters["batch_size"],
-            shuffle=True,
-            collate_fn=self.dataset.collate_fn,
-        )
-
-    def __build_optimizer_with_parameters(self, parameters):
-        '''
-        The parameters usually can be found in the SavedModels folder.
-        If a training want to resume after unloading, this method can be used
-        to load recorded optimizer parameters.
-        [parameters]: parameters containing all the training information.
-        '''
-
-        selectedOptimizer = SelectableOptimizer[parameters["optimizer"]] 
-
-        ###########################
-        # Set up optimizer
-        ###########################
-        if selectedOptimizer == SelectableOptimizer.Adam:
-            self.opt = optim.Adam(
-                self.model.parameters(),
-                lr=parameters["OptimizerParameters"]["learning_rate"],
-                weight_decay=parameters["OptimizerParameters"]["l2"],
-            )
-        elif selectedOptimizer == SelectableOptimizer.SGD:
-            self.opt = optim.SGD(
-                self.model.parameters(),
-                lr=parameters["OptimizerParameters"]["learning_rate"],
-                weight_decay=parameters["OptimizerParameters"]["l2"],
-                momentum=parameters["OptimizerParameters"]["SGD_momentum"],
-            )
-        else:
-            raise NotSupportedError("Optimizer you selected is not supported")
-
-        ################################
-        # Set up lr scheduler
-        ################################
-        shceduler= SelectableLrScheduler[parameters["OptimizerParameters"]["scheduler"]]
-
-        if shceduler == SelectableLrScheduler.StepScheduler:
-            self.scheduler = optim.lr_scheduler.StepLR(
-                self.opt,
-                step_size=parameters["OptimizerParameters"]["lr_scheduler_step"],
-                gamma=parameters["OptimizerParameters"]["lr_scheduler_gamma"],
-            )
-        elif shceduler == SelectableLrScheduler.NotUsing:
-            self.scheduler = None
-        else:
-            raise NotSupportedError(
-                "Learning rate scheduler you selected is not supported"
-            )
