@@ -1,5 +1,6 @@
 import json
 from Utils.SaveUtils import get_json_dict
+from dataclasses import dataclass, field
 from Parameters.Enums import (
     SelectableDatasets,
     SelectableLoss,
@@ -8,14 +9,63 @@ from Parameters.Enums import (
     SelectableOptimizer,
     ActivityType
 )
+import os 
+from Parameters.TrainingParameters import TrainingParameters
+from Parameters.EnviromentParameters import EnviromentParameters
 
+
+
+@dataclass
+class BPI2012(object):
+    BPI2012_include_types: list[ActivityType] = field(default_factory=lambda: [ActivityType.A, ActivityType.O, ActivityType.W])
+
+
+@dataclass
+class OptimizerParameters(object):
+    """
+    It will be override once you have load_model and load_optimizer = True
+    """
+    ###### XES ######
+    learning_rate: float = 0.005
+    l2: float = 0.00000001
+
+    ###### Medical ######
+    # learning_rate: float = 0.005
+    # l2: float = 0.001
+
+    # Scheduler
+    scheduler: SelectableLrScheduler = SelectableLrScheduler.StepScheduler
+    lr_scheduler_step: int = 800
+    lr_scheduler_gamma: float = 0.8
+    SGD_momentum:float = 0.9
+
+    def __post_init__(self):
+        if (type(self.scheduler) == str):
+            self.scheduler = SelectableLrScheduler[self.scheduler]
+    
+
+@dataclass
+class BaseNNModelParams(object):
+    hidden_dim: list[int] =  field(default_factory=lambda: [8]*8) 
+    dropout: float = .2
+
+@dataclass
+class BaselineLSTMModelParameters(object):
+    """
+    It will be override once you have load_model
+    """
+    embedding_dim: int = 32  # 128
+    lstm_hidden: int = 64  # 256
+    dropout: float = 0.1
+    num_lstm_layers: int = 1  # 2
+
+
+@dataclass
 class TrainingParameters(object):
     """
     Storing the parameters for controlling the training.
     """
 
-    # will be save as the name.
-    parameters_save_file_name__ = "parameters.json"
     
     #########################
     # Load
@@ -44,51 +94,56 @@ class TrainingParameters(object):
     ######################################
     # Dataset
     ######################################
-    train_test_split_portion = [0.8, 0.1] # Remaining will be used for validation.
-    dataset_split_seed = 12345
-
-    class BPI2012(object):
-        BPI2012_include_types = [ActivityType.A, ActivityType.O, ActivityType.W]
-
-    class OptimizerParameters(object):
-        """
-        It will be override once you have load_model and load_optimizer = True
-        """
-        ###### XES ######
-        learning_rate: float = 0.005
-        l2: float = 0.00000001
-
-        ###### Medical ######
-        # learning_rate: float = 0.005
-        # l2: float = 0.001
-
-        # Scheduler
-        scheduler: SelectableLrScheduler = SelectableLrScheduler.StepScheduler
-        lr_scheduler_step: int = 800
-        lr_scheduler_gamma: float = 0.8
-        SGD_momentum = 0.9
-
-    class BaseNNModelParams(object):
-        hidden_dim = [8]*8
-        dropout = .2
-
-    class BaselineLSTMModelParameters(object):
-        """
-        It will be override once you have load_model
-        """
-        embedding_dim: int = 32  # 128
-        lstm_hidden: int = 64  # 256
-        dropout: float = 0.1
-        num_lstm_layers: int = 1  # 2
+    train_test_split_portion: list[float] = field(default_factory= lambda: [0.8, 0.1]) # Remaining will be used for validation.
+    dataset_split_seed:int = 12345
 
     ########################
     # Others
     ########################
-    max_eos_predicted_length = 50
-    plot_cm = False
+    max_eos_predicted_length:int = 50
+    plot_cm: bool = False
 
-    @staticmethod
-    def save_parameters_json__(path: str):
-        parameters_dict = get_json_dict(TrainingParameters)
-        with open(path, "w") as output_file:
-            json.dump(parameters_dict, output_file, indent="\t")
+    bpi2012: BPI2012 = BPI2012()
+    baselineLSTMModelParameters: BaselineLSTMModelParameters = BaselineLSTMModelParameters()
+    optimizerParameters: OptimizerParameters = OptimizerParameters()
+    baseNNModelParams: BaseNNModelParams = BaseNNModelParams()
+
+    def __post_init__(self):
+        if (type(self.baselineLSTMModelParameters) == dict):
+            self.baselineLSTMModelParameters = BaselineLSTMModelParameters(**self.baselineLSTMModelParameters)
+
+        if (type(self.bpi2012) == dict):
+            self.bpi2012 = BPI2012(**self.bpi2012)
+
+        if (type(self.optimizerParameters) == dict):
+            self.optimizerParameters = OptimizerParameters(**self.optimizerParameters)
+
+        if (type(self.baseNNModelParams) == dict):
+            self.baseNNModelParams = BaseNNModelParams(**self.baseNNModelParams)
+
+        if (type(self.dataset) == str):
+            self.dataset = SelectableDatasets[self.dataset]
+
+        if (type(self.model) == str):
+            self.model = SelectableModels[self.model]
+
+        if (type(self.loss) == str):
+            self.loss = SelectableLoss[self.loss]
+
+        if (type(self.optimizer) == str):
+            self.optimizer = SelectableOptimizer[self.optimizer]
+
+
+def save_parameters_json__(path: str, parameters):
+    parameters_dict = get_json_dict(parameters)
+    with open(path, "w") as output_file:
+        json.dump(parameters_dict, output_file, indent="\t")
+
+
+def load_parameters(folder_path: str) -> TrainingParameters:
+    parameters_loading_path = os.path.join(
+        folder_path, EnviromentParameters.parameters_save_file_name__
+    )
+    with open(parameters_loading_path, "r") as output_file:
+        parameters = json.load(output_file)
+    return TrainingParameters(**parameters)

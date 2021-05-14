@@ -1,6 +1,5 @@
 from enum import Enum
 
-
 def get_json_dict(t):
     if isinstance(t,  Enum):
         return t.value
@@ -16,7 +15,7 @@ def get_json_dict(t):
     # If it's dict
     for k, v in vars(t).items():
         if not k.endswith("__"):
-            if type(v) == type:
+            if type(v) == type or isinstance(v, object):
                 json_dict[k] = get_json_dict(v)
             elif isinstance(v, Enum):
                 json_dict[k] = v.value
@@ -25,3 +24,5 @@ def get_json_dict(t):
             else:
                 json_dict[k] = v
     return json_dict
+
+

@@ -19,7 +19,6 @@ from datetime import datetime
 from torch.utils.data import DataLoader
 from Controller.TrainingRecord import TrainingRecord
 from CustomExceptions import NotSupportedError
-from Parameters.TrainingParameters import TrainingParameters
 from Data import MedicalDataset
 from Parameters.Enums import (
     SelectableDatasets,
@@ -31,7 +30,7 @@ from Parameters.Enums import (
 
 from Models import BaselineLSTMModel_V2, BaseNNModel
 
-from Parameters import EnviromentParameters
+from Parameters import EnviromentParameters, TrainingParameters
 
 from Utils.PrintUtils import (
     print_big,
@@ -40,48 +39,53 @@ from Utils.PrintUtils import (
     replace_print_flush,
 )
 
-class TrainingController_V2:
+class TrainingController_V2(object):
     model_save_file_name = "model.pt"
-
     #########################################
     #   Initialisation
     #########################################
 
-    def __init__(self):
+    def __init__(self, parameters: TrainingParameters):
+
+        self.parameters = parameters
+
         ############ determine the device ############
         self.device: str = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"
         )
-        self.plot_cm = TrainingParameters.plot_cm
 
         print_big("Running on %s " % (self.device))
 
         ############ Initialise records ############
         self.record = TrainingRecord(
-            record_freq_in_step=TrainingParameters.run_validation_freq
+            record_freq_in_step=parameters.run_validation_freq
         )
 
         ############ Initialise counters ############
         self.__epoch: int = 0
         self.__steps: int = 0
         self.test_accuracy: float = None
-        self.stop_epoch = TrainingParameters.stop_epoch
+        self.stop_epoch = self.parameters.stop_epoch
 
         self.__intialise_dataset()
 
+
+
+        self.__initialise_model()
+
+
         ############ Load model and optimizer ############
-        if not TrainingParameters.load_model_folder_path is None:
+        if not self.parameters.load_model_folder_path is None:
             ############ Load trained if specified ############
             self.load_trained_model(
-                TrainingParameters.load_model_folder_path,
-                TrainingParameters.load_optimizer,
+                self.parameters.load_model_folder_path,
+                self.parameters.load_optimizer,
             )
-            if not TrainingParameters.load_optimizer:
+            if not self.parameters.load_optimizer:
                 self.__intialise_optimizer()
         else:
             ############ Load empty model ############
             print_big("Model initialised")
-            self.__initialise_model()
             self.__intialise_optimizer()
 
         ############ move model to device ############
@@ -95,15 +99,15 @@ class TrainingController_V2:
 
     def __intialise_dataset(self):
         ############ Determine dataset ############
-        if TrainingParameters.dataset == SelectableDatasets.BPI2012:
+        if self.parameters.dataset == SelectableDatasets.BPI2012:
             self.dataset = XESDataset(
                 device=self.device,
                 file_path=EnviromentParameters.BPI2020Dataset.file_path,
                 preprocessed_folder_path=EnviromentParameters.BPI2020Dataset.preprocessed_foldr_path,
                 preprocessed_df_type=EnviromentParameters.BPI2020Dataset.preprocessed_df_type,
-                include_types=TrainingParameters.BPI2012.BPI2012_include_types,
+                include_types=self.parameters.BPI2012.BPI2012_include_types,
             )
-        elif TrainingParameters.dataset == SelectableDatasets.Diabetes:
+        elif self.parameters.dataset == SelectableDatasets.Diabetes:
             self.feature_names = EnviromentParameters.DiabetesDataset.feature_names
             self.dataset = MedicalDataset(
                 device=self.device,
@@ -111,14 +115,14 @@ class TrainingController_V2:
                 feature_names=EnviromentParameters.DiabetesDataset.feature_names,
                 target_col_name=EnviromentParameters.DiabetesDataset.target_name
             )
-        elif TrainingParameters.dataset == SelectableDatasets.Helpdesk:
+        elif self.parameters.dataset == SelectableDatasets.Helpdesk:
             self.dataset = XESDataset(
                 device=self.device,
                 file_path=EnviromentParameters.HelpDeskDataset.file_path,
                 preprocessed_folder_path=EnviromentParameters.HelpDeskDataset.preprocessed_foldr_path,
                 preprocessed_df_type=EnviromentParameters.HelpDeskDataset.preprocessed_df_type,
             )
-        elif TrainingParameters.dataset == SelectableDatasets.BreastCancer:
+        elif self.parameters.dataset == SelectableDatasets.BreastCancer:
             self.feature_names = EnviromentParameters.BreastCancerDataset.feature_names
             self.dataset = MedicalDataset(
                 device=self.device,
@@ -132,10 +136,10 @@ class TrainingController_V2:
         # Create datasets
         # Lengths for each set
         train_dataset_len = int(
-            len(self.dataset) * TrainingParameters.train_test_split_portion[0]
+            len(self.dataset) * self.parameters.train_test_split_portion[0]
         )
         test_dataset_len = int(
-            len(self.dataset) * TrainingParameters.train_test_split_portion[-1]
+            len(self.dataset) * self.parameters.train_test_split_portion[-1]
         )
         validation_dataset_len = len(self.dataset) - (
             train_dataset_len + test_dataset_len
@@ -151,30 +155,30 @@ class TrainingController_V2:
             lengths=[train_dataset_len,
                      validation_dataset_len, test_dataset_len],
             generator=torch.Generator().manual_seed(
-                TrainingParameters.dataset_split_seed
+                self.parameters.dataset_split_seed
             ),
         )
 
         # Initialise dataloaders
         self.train_data_loader = DataLoader(
             self.train_dataset,
-            batch_size=TrainingParameters.batch_size,
+            batch_size=self.parameters.batch_size,
             shuffle=self.train_dataset.dataset.get_train_shuffle(),
             collate_fn=self.dataset.collate_fn,
-            sampler= self.train_dataset.dataset.get_sampler_from_df(self.train_dataset[:], TrainingParameters.dataset_split_seed)
+            sampler= self.train_dataset.dataset.get_sampler_from_df(self.train_dataset[:], self.parameters.dataset_split_seed)
             # num_workers=4,
             # worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed()) % (2**32-1)),
 
         )
         self.validation_data_loader = DataLoader(
             self.validation_dataset,
-            batch_size=TrainingParameters.batch_size,
+            batch_size=self.parameters.batch_size,
             shuffle=True,
             collate_fn=self.dataset.collate_fn,
         )
         self.test_data_loader = DataLoader(
             self.test_dataset,
-            batch_size=TrainingParameters.batch_size,
+            batch_size=self.parameters.batch_size,
             shuffle=True,
             collate_fn=self.dataset.collate_fn,
         )
@@ -183,20 +187,20 @@ class TrainingController_V2:
         self,
     ):
         # Setting up model
-        if TrainingParameters.model == SelectableModels.BaseLineLSTMModel:
+        if self.parameters.model == SelectableModels.BaseLineLSTMModel:
             self.model = BaselineLSTMModel_V2(
                 device=self.device,
                 vocab=self.dataset.vocab,
-                embedding_dim=TrainingParameters.BaselineLSTMModelParameters.embedding_dim,
-                lstm_hidden=TrainingParameters.BaselineLSTMModelParameters.lstm_hidden,
-                dropout=TrainingParameters.BaselineLSTMModelParameters.dropout,
-                num_lstm_layers=TrainingParameters.BaselineLSTMModelParameters.num_lstm_layers,
+                embedding_dim=self.parameters.BaselineLSTMModelParameters.embedding_dim,
+                lstm_hidden=self.parameters.BaselineLSTMModelParameters.lstm_hidden,
+                dropout=self.parameters.BaselineLSTMModelParameters.dropout,
+                num_lstm_layers=self.parameters.BaselineLSTMModelParameters.num_lstm_layers,
             )
-        elif TrainingParameters.model == SelectableModels.BaseNNModel:
+        elif self.parameters.model == SelectableModels.BaseNNModel:
             self.model = BaseNNModel(
                 feature_names= self.feature_names,
-                hidden_dim = TrainingParameters.BaseNNModelParams.hidden_dim,
-                dropout = TrainingParameters.BaseNNModelParams.dropout
+                hidden_dim = self.parameters.baseNNModelParams.hidden_dim,
+                dropout = self.parameters.baseNNModelParams.dropout
             )
         else:
             raise NotSupportedError("Model you selected is not supported")
@@ -206,34 +210,34 @@ class TrainingController_V2:
         self,
     ):
         # Setting up optimizer
-        if TrainingParameters.optimizer == SelectableOptimizer.Adam:
+        if self.parameters.optimizer == SelectableOptimizer.Adam:
             self.opt = optim.Adam(
                 self.model.parameters(),
-                lr=TrainingParameters.OptimizerParameters.learning_rate,
-                weight_decay=TrainingParameters.OptimizerParameters.l2,
+                lr=self.parameters.optimizerParameters.learning_rate,
+                weight_decay=self.parameters.optimizerParameters.l2,
             )
-        elif TrainingParameters.optimizer == SelectableOptimizer.SGD:
+        elif self.parameters.optimizer == SelectableOptimizer.SGD:
             self.opt = optim.SGD(
                 self.model.parameters(),
-                lr=TrainingParameters.OptimizerParameters.learning_rate,
-                weight_decay=TrainingParameters.OptimizerParameters.l2,
-                momentum=TrainingParameters.OptimizerParameters.SGD_momentum,
+                lr=self.parameters.optimizerParameters.learning_rate,
+                weight_decay=self.parameters.optimizerParameters.l2,
+                momentum=self.parameters.optimizerParameters.SGD_momentum,
             )
         else:
             raise NotSupportedError("Optimizer you selected is not supported")
 
         # Setting up the learning rate scheduler
         if (
-            TrainingParameters.OptimizerParameters.scheduler
+            self.parameters.optimizerParameters.scheduler
             == SelectableLrScheduler.StepScheduler
         ):
             self.scheduler = optim.lr_scheduler.StepLR(
                 self.opt,
-                step_size=TrainingParameters.OptimizerParameters.lr_scheduler_step,
-                gamma=TrainingParameters.OptimizerParameters.lr_scheduler_gamma,
+                step_size=self.parameters.optimizerParameters.lr_scheduler_step,
+                gamma=self.parameters.optimizerParameters.lr_scheduler_gamma,
             )
         elif (
-            TrainingParameters.OptimizerParameters.scheduler
+            self.parameters.optimizerParameters.scheduler
             == SelectableLrScheduler.NotUsing
         ):
             self.scheduler = None
@@ -244,12 +248,12 @@ class TrainingController_V2:
 
     def __initialise_loss_fn(self):
         # Setting up loss
-        if TrainingParameters.loss == SelectableLoss.CrossEntropy:
+        if self.parameters.loss == SelectableLoss.CrossEntropy:
             self.loss = nn.CrossEntropyLoss(
                 reduction="mean",
                 ignore_index=self.dataset.vocab.padding_index(),
             )
-        elif TrainingParameters.loss == SelectableLoss.BCE:
+        elif self.parameters.loss == SelectableLoss.BCE:
             self.loss = nn.BCELoss(
                 reduction="mean",
             )
@@ -274,7 +278,7 @@ class TrainingController_V2:
                 )
                 self.__steps += 1
 
-                if self.__steps % TrainingParameters.verbose_freq == 0:
+                if self.__steps % self.parameters.verbose_freq == 0:
                     replace_print_flush(
                         "| Epoch [%d] | Step [%d] | lr [%.6f] | Loss: [%.4f] | Acc: [%.4f]|"
                         % (
@@ -288,7 +292,7 @@ class TrainingController_V2:
 
                 if (
                     self.__steps > 0
-                    and self.__steps % TrainingParameters.run_validation_freq == 0
+                    and self.__steps % self.parameters.run_validation_freq == 0
                 ):
                     print_peforming_task("Validation")
                     (
@@ -397,7 +401,7 @@ class TrainingController_V2:
         df_cm = pd.DataFrame(cm, index=list(
             self.model.get_labels()), columns=list(self.model.get_labels()))
 
-        if (self.plot_cm):
+        if (self.parameters.plot_cm):
             plt.figure(figsize=(40, 40), dpi=100)
             sn.heatmap(df_cm / np.sum(cm), annot=True, fmt='.2%')
         else:
@@ -473,13 +477,13 @@ class TrainingController_V2:
         if not (self.test_accuracy is None):
             saving_folder_path = os.path.join(
                 pathlib.Path(train_file).parent,
-                "SavedModels/%.4f_%s_%s_%s" % (self.test_accuracy, TrainingParameters.dataset.value, TrainingParameters.model.value,
+                "SavedModels/%.4f_%s_%s_%s" % (self.test_accuracy, self.parameters.dataset.value, self.parameters.model.value,
                                          str(datetime.now())),
             )
         else:
              saving_folder_path = os.path.join(
                 pathlib.Path(train_file).parent,
-                "SavedModels/%s_%s_%s" % (TrainingParameters.dataset.value, TrainingParameters.model.value,
+                "SavedModels/%s_%s_%s" % (self.parameters.dataset.value, self.parameters.model.value,
                                          str(datetime.now())),
             )
 
@@ -488,7 +492,7 @@ class TrainingController_V2:
 
         # Save parameters
         parameters_saving_path = os.path.join(
-            saving_folder_path, TrainingParameters.parameters_save_file_name__
+            saving_folder_path, EnviromentParameters.parameters_save_file_name__
         )
         TrainingParameters.save_parameters_json__(parameters_saving_path)
 
@@ -543,28 +547,14 @@ class TrainingController_V2:
             folder_path=folder_path)
         self.intialise_dataset_with_parameters(self, self.training_parameters)
         self.load_trained_model(
-            folder_path=folder_path, load_optimizer=TrainingParameters.load_optimizer, parameters=self.training_parameters)
+            folder_path=folder_path, load_optimizer=self.parameters.load_optimizer, parameters=self.training_parameters)
 
-    def load_training_parameters(self, folder_path: str):
-        parameters_loading_path = os.path.join(
-            folder_path, TrainingParameters.parameters_save_file_name__
-        )
-        with open(parameters_loading_path, "r") as output_file:
-            parameters = json.load(output_file)
-        return parameters
 
     def load_trained_model(self, folder_path: str, load_optimizer: bool, parameters= None):
         records_loading_path = os.path.join(
             folder_path, TrainingRecord.records_save_file_name
         )
         self.record.load_records(records_loading_path)
-
-        # Load parameters (Parameters is needed to load model and optimzers)
-        if parameters == None:
-            parameters = self.load_training_parameters(folder_path=folder_path)
-
-        # Create model according parameters
-        self.__buid_model_with_parameters(parameters)
 
         # Load model
         model_loading_path = os.path.join(
@@ -695,44 +685,6 @@ class TrainingController_V2:
             shuffle=True,
             collate_fn=self.dataset.collate_fn,
         )
-
-
-    def __buid_model_with_parameters(self, parameters):
-        '''
-        The parameters usually can be found in the SavedModels folder.
-        If a training want to resume after unloading, this method can be used
-        to load trained weight.
-        [parameters]: parameters containing all the training information.
-        '''
-
-        selectedModel: SelectableModels = SelectableModels[parameters["model"]]
-
-        ##########################
-        # Build models
-        ##########################
-        if selectedModel == SelectableModels.BaseLineLSTMModel:
-            self.model = BaselineLSTMModel_V2(
-                device=self.device,
-                vocab=self.dataset.vocab,
-                embedding_dim=parameters["BaselineLSTMModelParameters"][
-                    "embedding_dim"
-                ],
-                lstm_hidden=parameters["BaselineLSTMModelParameters"]["lstm_hidden"],
-                dropout=parameters["BaselineLSTMModelParameters"]["dropout"],
-                num_lstm_layers=parameters["BaselineLSTMModelParameters"][
-                    "num_lstm_layers"
-                ],
-            )
-
-        elif selectedModel == SelectableModels.BaseNNModel:
-            self.model = BaseNNModel(
-                feature_names= self.feature_names,
-                hidden_dim=  parameters["BaseNNModelParams"]["hidden_dim"],
-                dropout = parameters["BaseNNModelParams"]["dropout"],
-            )
-        
-        else:
-            raise NotSupportedError("Model you selected is not supported")
 
     def __build_optimizer_with_parameters(self, parameters):
         '''

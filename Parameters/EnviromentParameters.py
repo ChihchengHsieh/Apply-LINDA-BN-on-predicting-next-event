@@ -2,6 +2,8 @@ from Parameters.Enums import PreprocessedDfType
 
 class EnviromentParameters(object):
 
+    parameters_save_file_name__  = "parameters.json"
+
     #####################################
     # BPI 2012 dataset
     #####################################

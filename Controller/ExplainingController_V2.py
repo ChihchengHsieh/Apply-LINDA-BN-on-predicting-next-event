@@ -83,7 +83,7 @@ class ExplainingController_V2:
 
     def load_training_parameters(self, folder_path: str):
         parameters_loading_path = os.path.join(
-            folder_path, PredictingParameters.parameters_save_file_name__
+            folder_path, EnviromentParameters.parameters_save_file_name__
         )
         with open(parameters_loading_path, "r") as output_file:
             parameters = json.load(output_file)
