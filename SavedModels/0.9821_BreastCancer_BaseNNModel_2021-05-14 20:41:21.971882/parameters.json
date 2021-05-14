@@ -1,5 +1,5 @@
 {
-	"load_model_folder_path": null,
+	"load_model_folder_path": "./SavedModels/0.9821_BreastCancer_BaseNNModel_2021-05-13 04:41:16.872169",
 	"load_optimizer": true,
 	"dataset": "BreastCancer",
 	"model": "BaseNNModel",
@@ -14,12 +14,20 @@
 		0.1
 	],
 	"dataset_split_seed": 12345,
+	"max_eos_predicted_length": 50,
+	"plot_cm": false,
 	"bpi2012": {
 		"BPI2012_include_types": [
 			"A",
 			"O",
 			"W"
 		]
+	},
+	"baselineLSTMModelParameters": {
+		"embedding_dim": 128,
+		"lstm_hidden": 256,
+		"dropout": 0.1,
+		"num_lstm_layers": 2
 	},
 	"optimizerParameters": {
 		"learning_rate": 0.005,
@@ -41,13 +49,5 @@
 			8
 		],
 		"dropout": 0.2
-	},
-	"baselineLSTMModelParameters": {
-		"embedding_dim": 128,
-		"lstm_hidden": 256,
-		"dropout": 0.1,
-		"num_lstm_layers": 2
-	},
-	"max_eos_predicted_length": 50,
-	"plot_cm": false
+	}
 }

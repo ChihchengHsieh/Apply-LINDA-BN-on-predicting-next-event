@@ -1,7 +1,6 @@
 from Data.XESDataset import XESDataset
 import os
 import sys
-import json
 import torch
 import pathlib
 
@@ -13,7 +12,7 @@ from matplotlib.lines import Line2D
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
 import seaborn as sn
 import pandas as pd
-
+from Utils.SaveUtils import save_parameters_json
 from typing import Tuple
 from datetime import datetime
 from torch.utils.data import DataLoader
@@ -32,6 +31,7 @@ from Models import BaselineLSTMModel_V2, BaseNNModel
 
 from Parameters import EnviromentParameters, TrainingParameters
 
+
 from Utils.PrintUtils import (
     print_big,
     print_peforming_task,
@@ -40,14 +40,13 @@ from Utils.PrintUtils import (
 )
 
 class TrainingController_V2(object):
-    model_save_file_name = "model.pt"
     #########################################
     #   Initialisation
     #########################################
 
     def __init__(self, parameters: TrainingParameters):
 
-        self.parameters = parameters
+        self.parameters: TrainingParameters = parameters
 
         ############ determine the device ############
         self.device: str = torch.device(
@@ -96,7 +95,7 @@ class TrainingController_V2(object):
                 file_path=EnviromentParameters.BPI2020Dataset.file_path,
                 preprocessed_folder_path=EnviromentParameters.BPI2020Dataset.preprocessed_foldr_path,
                 preprocessed_df_type=EnviromentParameters.BPI2020Dataset.preprocessed_df_type,
-                include_types=self.parameters.BPI2012.BPI2012_include_types,
+                include_types=self.parameters.bpi2012.BPI2012_include_types,
             )
         elif self.parameters.dataset == SelectableDatasets.Diabetes:
             self.feature_names = EnviromentParameters.DiabetesDataset.feature_names
@@ -182,10 +181,10 @@ class TrainingController_V2(object):
             self.model = BaselineLSTMModel_V2(
                 device=self.device,
                 vocab=self.dataset.vocab,
-                embedding_dim=self.parameters.BaselineLSTMModelParameters.embedding_dim,
-                lstm_hidden=self.parameters.BaselineLSTMModelParameters.lstm_hidden,
-                dropout=self.parameters.BaselineLSTMModelParameters.dropout,
-                num_lstm_layers=self.parameters.BaselineLSTMModelParameters.num_lstm_layers,
+                embedding_dim=self.parameters.baselineLSTMModelParameters.embedding_dim,
+                lstm_hidden=self.parameters.baselineLSTMModelParameters.lstm_hidden,
+                dropout=self.parameters.baselineLSTMModelParameters.dropout,
+                num_lstm_layers=self.parameters.baselineLSTMModelParameters.num_lstm_layers,
             )
         elif self.parameters.model == SelectableModels.BaseNNModel:
             self.model = BaseNNModel(
@@ -414,7 +413,7 @@ class TrainingController_V2(object):
         if (self.__steps != 0):
             print_big(
                 "Loaded model has been trained for [%d] steps, [%d] epochs"
-                % (self.steps, self.epoch)
+                % (self.__steps, self.__epoch)
             )
 
             self.record.plot_records()
@@ -485,7 +484,8 @@ class TrainingController_V2(object):
         parameters_saving_path = os.path.join(
             saving_folder_path, EnviromentParameters.parameters_save_file_name__
         )
-        TrainingParameters.save_parameters_json__(parameters_saving_path)
+
+        save_parameters_json(parameters_saving_path, self.parameters)
 
         # Save training records
         records_saving_path = os.path.join(
@@ -501,7 +501,7 @@ class TrainingController_V2(object):
 
         # Save model
         model_saving_path = os.path.join(
-            saving_folder_path, self.model_save_file_name
+            saving_folder_path, EnviromentParameters.model_save_file_name
         )
 
         save_dict = {
@@ -535,7 +535,7 @@ class TrainingController_V2(object):
 
         # Load model
         model_loading_path = os.path.join(
-            folder_path, self.model_save_file_name)
+            folder_path, EnviromentParameters.model_save_file_name)
         checkpoint = torch.load(
             model_loading_path, map_location=self.device)
         self.model.load_state_dict(checkpoint["model_state_dict"])
@@ -549,7 +549,7 @@ class TrainingController_V2(object):
         self.__epoch = checkpoint["epoch"]
         self.__steps = checkpoint["steps"]
 
-        if ("mean_"  in checkpoint) and "var_" in checkpoint:
+        if ("mean_"  in checkpoint) and ("var_" in checkpoint):
             self.model.mean_ = checkpoint["mean_"] 
             self.model.var_ = checkpoint["var_"] 
 

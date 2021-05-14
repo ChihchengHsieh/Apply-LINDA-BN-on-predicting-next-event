@@ -13,6 +13,9 @@ from Parameters.Enums import (
 class BPI2012(object):
     BPI2012_include_types: list[ActivityType] = field(default_factory=lambda: [ActivityType.A, ActivityType.O, ActivityType.W])
 
+    def __post_init__(self):
+        self. BPI2012_include_types = [ ActivityType[t] if type(t) == str else t for t in  self.BPI2012_include_types]
+
 
 @dataclass
 class OptimizerParameters(object):

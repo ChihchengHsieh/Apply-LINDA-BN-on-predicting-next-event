@@ -1,3 +1,4 @@
+from Parameters import EnviromentParameters
 from pyAgrum.lib.bn2roc import showROC
 import pyAgrum.lib.notebook as gnb
 import pyAgrum as gum
@@ -36,6 +37,6 @@ def learnBN(file_path: str, algorithm: BN_Algorithm = BN_Algorithm.HillClimbing)
 
     bn = learner.learnBN()
     essencGraph = gum.EssentialGraph(bn)
-    infoBN = gnb.getInformation(bn)
+    infoBN = gnb.getInformation(bn, size=EnviromentParameters.default_graph_size)
 
     return [bn, infoBN, essencGraph]

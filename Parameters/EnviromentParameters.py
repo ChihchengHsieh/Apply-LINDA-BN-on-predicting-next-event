@@ -3,6 +3,8 @@ from Parameters.Enums import PreprocessedDfType
 class EnviromentParameters(object):
 
     parameters_save_file_name__  = "parameters.json"
+    model_save_file_name = "model.pt"
+    default_graph_size = 500
 
     #####################################
     # BPI 2012 dataset

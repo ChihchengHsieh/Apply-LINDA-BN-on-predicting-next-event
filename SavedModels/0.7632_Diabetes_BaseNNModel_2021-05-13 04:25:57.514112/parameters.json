@@ -14,14 +14,14 @@
 		0.1
 	],
 	"dataset_split_seed": 12345,
-	"BPI2012": {
+	"bpi2012": {
 		"BPI2012_include_types": [
 			"A",
 			"O",
 			"W"
 		]
 	},
-	"OptimizerParameters": {
+	"optimizerParameters": {
 		"learning_rate": 0.005,
 		"l2": 0.0001,
 		"scheduler": "StepScheduler",
@@ -29,7 +29,7 @@
 		"lr_scheduler_gamma": 0.8,
 		"SGD_momentum": 0.9
 	},
-	"BaseNNModelParams": {
+	"baseNNModelParams": {
 		"hidden_dim": [
 			8,
 			8,
@@ -40,7 +40,7 @@
 		],
 		"dropout": 0.3
 	},
-	"BaselineLSTMModelParameters": {
+	"baselineLSTMModelParameters": {
 		"embedding_dim": 128,
 		"lstm_hidden": 256,
 		"dropout": 0.1,

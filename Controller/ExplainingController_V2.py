@@ -22,44 +22,66 @@ import pydotplus as dot
 from IPython.core.display import SVG
 from Data import  XESDataset
 
-from Parameters import EnviromentParameters
+from Parameters import EnviromentParameters, TrainingParameters
 
 
 class ExplainingController_V2:
-    model_save_file_name = "model.pt"
-
     ######################################
     #   Initialisation
     ######################################
-    def __init__(self) -> None:
+    def __init__(self, parameters: TrainingParameters, predicting_parameters: PredictingParameters) -> None:
+        self.parameters = parameters
+        self.predicting_parameters = predicting_parameters
+
         self.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu")
 
-        self.training_parameters = self.load_training_parameters(
-            PredictingParameters.load_model_folder_path
-        )
-
         self.__initialise_data()
+        self.__initialise_model()
 
         # Load trained model
-        if not PredictingParameters.load_model_folder_path is None:
+        if not self.predicting_parameters.load_model_folder_path is None:
             self.load_trained_model(
-                PredictingParameters.load_model_folder_path)
+                self.predicting_parameters.load_model_folder_path)
         else:
             raise Exception(
                 "You need to specify the path to load the trained model")
 
         self.__initialise_loss_fn()
 
+    def __initialise_model(
+        self,
+    ):
+        # Setting up model
+        if self.parameters.model == SelectableModels.BaseLineLSTMModel:
+            self.model = BaselineLSTMModel_V2(
+                device=self.device,
+                vocab=self.vocab,
+                embedding_dim=self.parameters.baselineLSTMModelParameters.embedding_dim,
+                lstm_hidden=self.parameters.baselineLSTMModelParameters.lstm_hidden,
+                dropout=self.parameters.baselineLSTMModelParameters.dropout,
+                num_lstm_layers=self.parameters.baselineLSTMModelParameters.num_lstm_layers,
+            )
+        elif self.parameters.model == SelectableModels.BaseNNModel:
+            self.model = BaseNNModel(
+                feature_names= self.feature_names,
+                hidden_dim = self.parameters.baseNNModelParams.hidden_dim,
+                dropout = self.parameters.baseNNModelParams.dropout
+            )
+        else:
+            raise NotSupportedError("Model you selected is not supported")
+        self.model.to(self.device)
+
+
     def __initialise_data(self):
+
         # Load vocab dict
-        dataset = SelectableDatasets[self.training_parameters["dataset"]]
+        dataset = self.parameters.dataset
         ############# Sequential dataset need to load vocab #############
         if dataset == SelectableDatasets.BPI2012:
             vocab_dict_path = os.path.join(
                 EnviromentParameters.BPI2020Dataset.preprocessed_foldr_path,
-                XESDataset.get_type_folder_name([ActivityType[t]
-                                                 for t in self.training_parameters["BPI2012"]["BPI2012_include_types"]]),
+                XESDataset.get_type_folder_name(self.parameters.bpi2012.BPI2012_include_types),
                 XESDataset.vocab_dict_file_name)
             with open(vocab_dict_path, 'r') as output_file:
                 vocab_dict = json.load(output_file)
@@ -81,22 +103,11 @@ class ExplainingController_V2:
         else:
             raise NotSupportedError("Dataset you selected is not supported")
 
-    def load_training_parameters(self, folder_path: str):
-        parameters_loading_path = os.path.join(
-            folder_path, EnviromentParameters.parameters_save_file_name__
-        )
-        with open(parameters_loading_path, "r") as output_file:
-            parameters = json.load(output_file)
-        return parameters
-
     def load_trained_model(self, folder_path: str):
-
-        # Create model according to the training parameters
-        self.__buid_model_with_parameters(self.training_parameters)
 
         # Load model
         model_loading_path = os.path.join(
-            folder_path, self.model_save_file_name)
+            folder_path, EnviromentParameters.model_save_file_name)
         checkpoint = torch.load(
             model_loading_path, map_location=torch.device(self.device))
         # TODO:
@@ -110,53 +121,16 @@ class ExplainingController_V2:
 
         self.model.to(self.device)
         self.model.eval()
-
         print_big("Model loaded successfully from %s" % (model_loading_path))
-
-    def __buid_model_with_parameters(self, parameters):
-        '''
-        The parameters usually can be found in the SavedModels folder.
-        If a training want to resume after unloading, this method can be used
-        to load trained weight.
-        [parameters]: parameters containing all the training information.
-        '''
-        selectedModel: SelectableModels = SelectableModels[parameters["model"]]
-
-        ##########################
-        # Build models
-        ##########################
-        if selectedModel == SelectableModels.BaseLineLSTMModel:
-            self.model = BaselineLSTMModel_V2(
-                device=self.device,
-                vocab=self.vocab,
-                embedding_dim=parameters["BaselineLSTMModelParameters"][
-                    "embedding_dim"
-                ],
-                lstm_hidden=parameters["BaselineLSTMModelParameters"]["lstm_hidden"],
-                dropout=parameters["BaselineLSTMModelParameters"]["dropout"],
-                num_lstm_layers=parameters["BaselineLSTMModelParameters"][
-                    "num_lstm_layers"
-                ],
-            )
-
-        elif selectedModel == SelectableModels.BaseNNModel:
-            self.model = BaseNNModel(
-                feature_names=self.feature_names,
-                hidden_dim=parameters["BaseNNModelParams"]["hidden_dim"],
-                dropout=parameters["BaseNNModelParams"]["dropout"],
-            )
-
-        else:
-            raise NotSupportedError("Model you selected is not supported")
 
     def __initialise_loss_fn(self):
         # Setting up loss
-        if PredictingParameters.loss == SelectableLoss.CrossEntropy:
+        if self.parameters.loss == SelectableLoss.CrossEntropy:
             self.loss = nn.CrossEntropyLoss(
                 reduction="mean",
                 ignore_index=self.model.vocab.padding_index(),
             )
-        elif PredictingParameters.loss == SelectableLoss.BCE:
+        elif self.parameters.loss == SelectableLoss.BCE:
             self.loss = nn.BCELoss(
                 reduction="mean",
             )
@@ -174,7 +148,6 @@ class ExplainingController_V2:
 
         data_predicted_list: list[int] = self.model.predicting_from_list_of_vacab_trace(
             data=[data], n_steps=n_steps, use_argmax=use_argmax)[0]
-        to_infer_vocab = data_predicted_list[-1]
 
         # Trnasfer to int list
         data_int_list = self.model.vocab.list_of_vocab_to_index(data)
@@ -213,10 +186,10 @@ class ExplainingController_V2:
         markov_blanket_html = SVG(markov_blanket_dot.create_svg()).data
 
         inference = gnb.getInference(
-            bn, evs={}, targets=col_names, size="70")
+            bn, evs={col_names[-1]: data[-1]}, targets=col_names, size=EnviromentParameters.default_graph_size)
 
         os.remove(file_path)
-        return df_to_dump, data_predicted_list, bn, gnb.getBN(bn), inference, infoBN, markov_blanket_html
+        return df_to_dump, data_predicted_list, bn, gnb.getBN(bn, size=EnviromentParameters.default_graph_size), inference, infoBN, markov_blanket_html
 
     def medical_predict_lindaBN_explain(self, data, num_samples, variance=0.5, number_of_bins=5):
         if not type(self.model) == BaseNNModel:
@@ -281,10 +254,10 @@ class ExplainingController_V2:
         #     bn, evs={self.target_name: to_infer}, targets=cat_df.columns.values, size="70")
 
         inference = gnb.getInference(
-            bn, evs={}, targets=cat_df.columns.values, size="70")
+            bn, evs={self.target_name: "True"},targets=cat_df.columns.values, size=EnviromentParameters.default_graph_size)
 
         os.remove(file_path)
-        return cat_df, predicted_value, bn, gnb.getBN(bn), inference, infoBN, markov_blanket_html
+        return cat_df, predicted_value, bn, gnb.getBN(bn, size=EnviromentParameters.default_graph_size), inference, infoBN, markov_blanket_html
 
     ############################
     #   Utils
@@ -299,8 +272,8 @@ class ExplainingController_V2:
                   (self.model.num_all_params()))
 
     def generate_html_page_from_graphs(self,input, predictedValue, bn, inference, infoBN, markov_blanket):
-        outputstring: str = "<h1 style=\"text-align: center\">Model</h1>" +\
-                            + "<div>" + PredictingParameters.load_model_folder_path + "</div>"\
+        outputstring: str = "<h1 style=\"text-align: center\">Model</h1>" \
+                            + "<div>" + self.predicting_parameters.load_model_folder_path + "</div>"\
                             + "<h1>Input</h1>" \
                             + "<div>" + input + "</div>"\
                             + "<h1>Predicted</h1>" \
@@ -318,7 +291,7 @@ class ExplainingController_V2:
         path_to_explanation = './Explanations'
         os.makedirs(path_to_explanation, exist_ok=True)
         save_path = os.path.join(
-            path_to_explanation, '%s_%s_graphs_LINDA-BN.html' % (PredictingParameters.load_model_folder_path, datetime.now()))
+            path_to_explanation, '%s_%s_graphs_LINDA-BN.html' % (os.path.basename(os.path.normpath(self.predicting_parameters.load_model_folder_path)) , datetime.now()))
         with open(save_path, 'w')as output_file:
             output_file.write(html_content)
 
