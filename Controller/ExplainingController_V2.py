@@ -249,7 +249,7 @@ class ExplainingController_V2:
 
         has_more_than_one_predicted =  len(cat_df[self.target_name].unique()) > 1
 
-        if  not has_more_than_one_predicted:
+        if not has_more_than_one_predicted:
             raise PermuatationException("All permutation predict same results. Please increase variance or number of samples")
 
         infoBN = gnb.getInformation(bn, size=EnviromentParameters.default_graph_size) 
@@ -283,11 +283,11 @@ class ExplainingController_V2:
 
     def generate_html_page_from_graphs(self,input, predictedValue, bn, inference, infoBN, markov_blanket):
         outputstring: str = "<h1 style=\"text-align: center\">Model</h1>" \
-                            + "<div>" + self.predicting_parameters.load_model_folder_path + "</div>"\
-                            + "<h1>Input</h1>" \
-                            + "<div>" + input + "</div>"\
-                            + "<h1>Predicted</h1>" \
-                            + "<div>" + predictedValue + "</div>"\
+                            + "<div style=\"text-align: center\">" + self.predicting_parameters.load_model_folder_path + "</div>"\
+                            + "<h1 style=\"text-align: center\">Input</h1>" \
+                            + "<div style=\"text-align: center\">" + input + "</div>"\
+                            + "<h1 style=\"text-align: center\">Predicted</h1>" \
+                            + "<div style=\"text-align: center\">" + predictedValue + "</div>"\
                             +"<h1 style=\"text-align: center\">BN</h1>" \
                             + "<div style=\"text-align: center\">" + bn + "</div>"\
                             + ('</br>'*5) + "<h1 style=\"text-align: center\">Inference</h1>" \
