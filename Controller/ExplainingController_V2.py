@@ -240,14 +240,10 @@ class ExplainingController_V2:
         bn = learn.learnBN(
             file_path, algorithm=learn.BN_Algorithm.HillClimbing)
 
-        has_more_than_one_predicted =  len(cat_df[self.target_name].unique()) > 1
-
         # if not has_more_than_one_predicted:
-        #     os.remove(file_path)
         #     raise PermuatationException("All permutation predict same results. Please increase variance or number of samples")
 
         # if len (bn.arcs()) < 1:
-        #     os.remove(file_path)
         #     raise PermuatationException("No relationships found between columns. Please increase variance or number of samples")
 
         infoBN = gnb.getInformation(bn, size=EnviromentParameters.default_graph_size) 
@@ -261,8 +257,14 @@ class ExplainingController_V2:
         # inference = gnb.getInference(
         #     bn, evs={self.target_name: to_infer}, targets=cat_df.columns.values, size="70")
 
+        has_more_than_one_predicted =  len(cat_df[self.target_name].unique()) > 1
+        if has_more_than_one_predicted:
+            input_evs = {self.target_name: "True"}
+        else: 
+            input_evs= {}
+
         inference = gnb.getInference(
-            bn, evs={self.target_name: "True"} ,targets=cat_df.columns.values, size=EnviromentParameters.default_graph_size)
+            bn, evs=input_evs ,targets=cat_df.columns.values, size=EnviromentParameters.default_graph_size)
 
         os.remove(file_path)
         return cat_df, predicted_value.item(), bn, gnb.getBN(bn, size=EnviromentParameters.default_graph_size), inference, infoBN, markov_blanket_html
