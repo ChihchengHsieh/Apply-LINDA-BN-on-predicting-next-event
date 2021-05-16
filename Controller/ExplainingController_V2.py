@@ -243,10 +243,11 @@ class ExplainingController_V2:
         # if not has_more_than_one_predicted:
         #     raise PermuatationException("All permutation predict same results. Please increase variance or number of samples")
 
-        # if len (bn.arcs()) < 1:
-        #     raise PermuatationException("No relationships found between columns. Please increase variance or number of samples")
-
-        infoBN = gnb.getInformation(bn, size=EnviromentParameters.default_graph_size) 
+        if len (bn.arcs()) < 1:
+            # raise PermuatationException("No relationships found between columns. Please increase variance or number of samples")
+            infoBN = ""
+        else:
+            infoBN = gnb.getInformation(bn, size=EnviromentParameters.default_graph_size) 
         
         # compute Markov Blanket
         markov_blanket = gum.MarkovBlanket(bn, self.target_name)
