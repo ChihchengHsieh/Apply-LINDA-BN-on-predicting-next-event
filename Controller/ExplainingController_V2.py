@@ -242,11 +242,13 @@ class ExplainingController_V2:
 
         has_more_than_one_predicted =  len(cat_df[self.target_name].unique()) > 1
 
-        if not has_more_than_one_predicted:
-            raise PermuatationException("All permutation predict same results. Please increase variance or number of samples")
+        # if not has_more_than_one_predicted:
+        #     os.remove(file_path)
+        #     raise PermuatationException("All permutation predict same results. Please increase variance or number of samples")
 
-        if len (bn.arcs()) < 1:
-            raise PermuatationException("No relationships found between columns. Please increase variance or number of samples")
+        # if len (bn.arcs()) < 1:
+        #     os.remove(file_path)
+        #     raise PermuatationException("No relationships found between columns. Please increase variance or number of samples")
 
         infoBN = gnb.getInformation(bn, size=EnviromentParameters.default_graph_size) 
         
