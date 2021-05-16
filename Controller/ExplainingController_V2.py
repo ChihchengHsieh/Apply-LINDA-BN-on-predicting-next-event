@@ -189,7 +189,7 @@ class ExplainingController_V2:
         markov_blanket_html = SVG(markov_blanket_dot.create_svg()).data
 
         inference = gnb.getInference(
-            bn, evs={col_names[-1]: data[-1]}, targets=col_names, size=EnviromentParameters.default_graph_size)
+            bn, evs={col_names[-1]: data_predicted_list[-1]}, targets=col_names, size=EnviromentParameters.default_graph_size)
 
         os.remove(file_path)
         return df_to_dump, data_predicted_list, bn, gnb.getBN(bn, size=EnviromentParameters.default_graph_size), inference, infoBN, markov_blanket_html
@@ -208,13 +208,8 @@ class ExplainingController_V2:
         all_permutations_t = permute.generate_permutation_for_numerical_all_dim(
             norm_data.squeeze(), num_samples=num_samples, variance=variance)
 
-        # self.all_permutations = all_permutations
-
         ################## Predict permutations ##################
-        # all_permutations_t = torch.cat(all_permutations, dim=0).float()
         all_predictions = self.model(all_permutations_t)
-
-        self.all_predictions = all_predictions
 
         ################## Descretise numerical ##################
         reversed_permutations_t = self.model.reverse_normalize_input(
@@ -242,8 +237,6 @@ class ExplainingController_V2:
 
         cat_df.to_csv(file_path, index=False)
 
-        self.cat_df = cat_df
-
         bn = learn.learnBN(
             file_path, algorithm=learn.BN_Algorithm.HillClimbing)
 
@@ -251,6 +244,9 @@ class ExplainingController_V2:
 
         if not has_more_than_one_predicted:
             raise PermuatationException("All permutation predict same results. Please increase variance or number of samples")
+
+        if len (bn.arcs()) < 1:
+            raise PermuatationException("No relationships found between columns. Please increase variance or number of samples")
 
         infoBN = gnb.getInformation(bn, size=EnviromentParameters.default_graph_size) 
         
@@ -267,7 +263,7 @@ class ExplainingController_V2:
             bn, evs={self.target_name: "True"} ,targets=cat_df.columns.values, size=EnviromentParameters.default_graph_size)
 
         os.remove(file_path)
-        return cat_df, predicted_value, bn, gnb.getBN(bn, size=EnviromentParameters.default_graph_size), inference, infoBN, markov_blanket_html
+        return cat_df, predicted_value.item(), bn, gnb.getBN(bn, size=EnviromentParameters.default_graph_size), inference, infoBN, markov_blanket_html
 
     ############################
     #   Utils
