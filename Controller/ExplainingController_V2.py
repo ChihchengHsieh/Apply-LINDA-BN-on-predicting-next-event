@@ -258,7 +258,6 @@ class ExplainingController_V2:
         #     bn, evs={self.target_name: to_infer}, targets=cat_df.columns.values, size="70")
 
         has_more_than_one_predicted =  len(cat_df[self.target_name].unique()) > 1
-
         if has_more_than_one_predicted:
             input_evs = {self.target_name: "True"}
         else: 
