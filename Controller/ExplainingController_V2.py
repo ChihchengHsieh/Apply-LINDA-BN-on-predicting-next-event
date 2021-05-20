@@ -194,7 +194,7 @@ class ExplainingController_V2:
         os.remove(file_path)
         return df_to_dump, data_predicted_list, bn, gnb.getBN(bn, size=EnviromentParameters.default_graph_size), inference, infoBN, markov_blanket_html
 
-    def medical_predict_lindaBN_explain(self, data, num_samples, variance=0.5, number_of_bins=5):
+    def medical_predict_lindaBN_explain(self, data, num_samples, variance=0.5, number_of_bins=4):
         if not type(self.model) == BaseNNModel:
             raise NotSupportedError("Unsupported model")
 
