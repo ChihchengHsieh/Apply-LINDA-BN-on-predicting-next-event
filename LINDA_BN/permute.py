@@ -2,6 +2,8 @@ import numpy as np
 import pyAgrum as gum
 import torch
 from torch.distributions.uniform import Uniform
+from torch.distributions.normal import Normal
+
 
 
 def generate_permutation_for_numerical(input_data: torch.tensor, num_samples_per_feature, variance = 0.5, ):
@@ -38,6 +40,10 @@ def generate_permutation_for_numerical_all_dim(input_data: torch.tensor, num_sam
     max_range = torch.clip(input_data + variance , -0.999999, 1).float()
     min_range = torch.clip(input_data - variance, -1, 0.999999).float()
     dist = Uniform(min_range, max_range)
+    return dist.sample((num_samples,))
+
+def generate_permutations_for_normerical_all_dim_normal_dist(input_data: torch.tensor, num_samples, variance = 0.5):
+    dist = Normal(input_data, torch.full_like(input_data, variance))
     return dist.sample((num_samples,))
 
 def generate_permutation_for_trace(trace: np.array, vocab_size: int, last_n_stages_to_permute: int = None):

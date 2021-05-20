@@ -207,6 +207,9 @@ class ExplainingController_V2:
         #################### Generate permutations ####################
         all_permutations_t = permute.generate_permutation_for_numerical_all_dim(
             norm_data.squeeze(), num_samples=num_samples, variance=variance)
+        
+        # all_permutations_t = permute.generate_permutations_for_normerical_all_dim_normal_dist(
+        #     norm_data.squeeze(), num_samples=num_samples, variance=variance)
 
         ################## Predict permutations ##################
         all_predictions = self.model(all_permutations_t)
