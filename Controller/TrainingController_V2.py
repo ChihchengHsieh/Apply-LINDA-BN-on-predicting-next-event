@@ -31,8 +31,10 @@ from Models import BaselineLSTMModel_V2, BaseNNModel
 
 from Parameters import EnviromentParameters, TrainingParameters
 
+from IPython.display import clear_output
 
 from Utils.PrintUtils import (
+    is_notebook,
     print_big,
     print_peforming_task,
     print_taks_done,
@@ -295,6 +297,10 @@ class TrainingController_V2(object):
                         validation_accuracy=validation_accuracy,
                         validation_loss=validation_loss,
                     )
+                    
+                    if (is_notebook):
+                        clear_output(wait=True)
+                    
                     self.record.plot_records()
 
             self.__epoch += 1

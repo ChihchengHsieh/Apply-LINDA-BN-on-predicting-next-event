@@ -11,7 +11,7 @@ from Parameters.Enums import (
 
 @dataclass
 class BPI2012(object):
-    BPI2012_include_types: list[ActivityType] = field(default_factory=lambda: [ActivityType.A, ActivityType.O, ActivityType.W])
+    BPI2012_include_types: list[ActivityType] = field(default_factory=lambda: [ActivityType.O, ActivityType.W])
 
     def __post_init__(self):
         self. BPI2012_include_types = [ ActivityType[t] if type(t) == str else t for t in  self.BPI2012_include_types]
@@ -23,8 +23,8 @@ class OptimizerParameters(object):
     It will be override once you have load_model and load_optimizer = True
     """
     ###### XES ######
-    learning_rate: float = 0.005
-    l2: float = 0.00000001
+    learning_rate: float = 0.0005
+    l2: float = 0.0000000001
 
     ###### Medical ######
     # learning_rate: float = 0.005
@@ -62,7 +62,6 @@ class TrainingParameters(object):
     """
     Storing the parameters for controlling the training.
     """
-
     
     #########################
     # Load
@@ -75,15 +74,15 @@ class TrainingParameters(object):
     ######################################
     # Selectables
     #####################################
-    dataset: SelectableDatasets = SelectableDatasets.BreastCancer
-    model: SelectableModels = SelectableModels.BaseNNModel
-    loss: SelectableLoss = SelectableLoss.BCE
+    dataset: SelectableDatasets = SelectableDatasets.BPI2012
+    model: SelectableModels = SelectableModels.BaseLineLSTMModel
+    loss: SelectableLoss = SelectableLoss.CrossEntropy
     optimizer: SelectableOptimizer = SelectableOptimizer.Adam
 
     ######################################
     # Count 
     ######################################
-    stop_epoch: int = 100
+    stop_epoch: int = 500
     batch_size: int = 128
     verbose_freq: int = 250 # in step
     run_validation_freq: int = 500  # in step
