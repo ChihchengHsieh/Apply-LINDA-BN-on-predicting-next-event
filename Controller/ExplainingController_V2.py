@@ -7,7 +7,7 @@ from datetime import datetime
 from LINDA_BN import learn, permute
 
 from Utils.PrintUtils import print_big
-from Parameters.Enums import ActivityType, SelectableDatasets, SelectableLoss, SelectableModels
+from Parameters.Enums import PermuatationSampleDist, SelectableDatasets, SelectableLoss, SelectableModels
 import torch
 from Parameters.PredictingParameters import PredictingParameters
 import os
@@ -21,9 +21,10 @@ import pyAgrum as gum
 import pyAgrum.lib.notebook as gnb
 import pydotplus as dot
 from IPython.core.display import SVG
-from Data import  XESDataset
+from Data import XESDataset
 
 from Parameters import EnviromentParameters, TrainingParameters
+import matplotlib.pyplot as plt
 
 
 class ExplainingController_V2:
@@ -65,14 +66,13 @@ class ExplainingController_V2:
             )
         elif self.parameters.model == SelectableModels.BaseNNModel:
             self.model = BaseNNModel(
-                feature_names= self.feature_names,
-                hidden_dim = self.parameters.baseNNModelParams.hidden_dim,
-                dropout = self.parameters.baseNNModelParams.dropout
+                feature_names=self.feature_names,
+                hidden_dim=self.parameters.baseNNModelParams.hidden_dim,
+                dropout=self.parameters.baseNNModelParams.dropout
             )
         else:
             raise NotSupportedError("Model you selected is not supported")
         self.model.to(self.device)
-
 
     def __initialise_data(self):
 
@@ -82,7 +82,8 @@ class ExplainingController_V2:
         if dataset == SelectableDatasets.BPI2012:
             vocab_dict_path = os.path.join(
                 EnviromentParameters.BPI2020Dataset.preprocessed_foldr_path,
-                XESDataset.get_type_folder_name(self.parameters.bpi2012.BPI2012_include_types),
+                XESDataset.get_type_folder_name(
+                    self.parameters.bpi2012.BPI2012_include_types),
                 XESDataset.vocab_dict_file_name)
             with open(vocab_dict_path, 'r') as output_file:
                 vocab_dict = json.load(output_file)
@@ -180,7 +181,8 @@ class ExplainingController_V2:
         bn = learn.learnBN(
             file_path, algorithm=learn.BN_Algorithm.HillClimbing)
 
-        infoBN = gnb.getInformation(bn, size=EnviromentParameters.default_graph_size)
+        infoBN = gnb.getInformation(
+            bn, size=EnviromentParameters.default_graph_size)
 
         # compute Markov Blanket
         markov_blanket = gum.MarkovBlanket(bn, col_names[-1])
@@ -194,7 +196,60 @@ class ExplainingController_V2:
         os.remove(file_path)
         return df_to_dump, data_predicted_list, bn, gnb.getBN(bn, size=EnviromentParameters.default_graph_size), inference, infoBN, markov_blanket_html
 
-    def medical_predict_lindaBN_explain(self, data, num_samples, variance=0.5, number_of_bins=4):
+    def medical_check_boundary(self, input_data: torch.tensor, variance: float = 0.1, steps: int = 10):
+
+        ###### Scale the input ######
+        norm_data = self.model.normalize_input(input_data)
+
+        ###### Get prediction ######
+        predicted_value = self.model(norm_data)
+
+        ### Generate permutations
+        norm_data = norm_data.squeeze()
+        all_permutations = permute.generate_fix_step_permutation_for_finding_boundary(norm_data, variance=variance, steps=steps)
+        all_permutation_t = torch.stack(all_permutations)
+
+        all_result = self.model(all_permutation_t)
+
+        ### Split by features 
+        all_permutation_chunks = torch.split(all_permutation_t, steps*2, dim=0)
+        all_result_chunks = torch.split(all_result, steps*2, dim=0)
+
+        ### Grouping by feature
+        group_lists = []
+        for i, col_name in enumerate(self.feature_names):
+            group_lists.append({
+                "name": col_name,
+                "permutations" :all_permutation_chunks[i],
+                "results": all_result_chunks[i],
+                "index": i
+            })
+
+        fig, axs = plt.subplots(len(group_lists), figsize=(10, 17))
+        for i in range(len(group_lists)):
+            index_in_row = group_lists[i]["index"]
+            all_f_dots =group_lists[i]["permutations"][:,index_in_row].tolist()
+            all_f_results = group_lists[i]["results"].squeeze().tolist()
+            ## Append input data
+            input_data_value = norm_data[index_in_row].item() 
+            all_f_dots.append(input_data_value)
+            all_f_results.append(predicted_value)
+
+            axs[i].hlines(0, min(all_f_dots), max(all_f_dots))
+            axs[i].vlines(input_data_value, 1, -1)
+            axs[i].set_xlim(min(all_f_dots)-variance, max(all_f_dots)+variance)
+            axs[i].set_ylim(-0.5, 0.5)
+            true_array = np.array([all_f_dots[idx] for idx, r in enumerate(all_f_results) if r > 0.5 ])
+            false_array = np.array([all_f_dots[idx] for idx, r in enumerate(all_f_results) if r <= 0.5 ])
+            axs[i].plot(true_array, np.zeros_like(true_array) , 'bo', ms=8, mfc='b', label="True")
+            axs[i].plot(false_array, np.zeros_like(false_array), 'ro', ms=8, mfc='r', label="False")
+            axs[i].set_title(group_lists[i]['name'])
+            axs[i].legend()
+
+        fig.tight_layout()
+
+
+    def medical_predict_lindaBN_explain(self, data, num_samples, variance=0.5, number_of_bins=4, sample_dist: PermuatationSampleDist = PermuatationSampleDist.Uniform, using_qcut: bool = True, clip_permutation=True):
         if not type(self.model) == BaseNNModel:
             raise NotSupportedError("Unsupported model")
 
@@ -205,11 +260,16 @@ class ExplainingController_V2:
         predicted_value = self.model(norm_data)
 
         #################### Generate permutations ####################
-        all_permutations_t = permute.generate_permutation_for_numerical_all_dim(
-            norm_data.squeeze(), num_samples=num_samples, variance=variance)
-        
-        # all_permutations_t = permute.generate_permutations_for_normerical_all_dim_normal_dist(
-        #     norm_data.squeeze(), num_samples=num_samples, variance=variance)
+
+        if sample_dist == PermuatationSampleDist.Uniform:
+            all_permutations_t = permute.generate_permutation_for_numerical_all_dim(
+                norm_data.squeeze(), num_samples=num_samples, variance=variance, clip_permutation=clip_permutation)
+        elif sample_dist == PermuatationSampleDist.Normal:
+            all_permutations_t = permute.generate_permutations_for_normerical_all_dim_normal_dist(
+                norm_data.squeeze(), num_samples=num_samples, variance=variance)
+        else:
+            raise NotSupportedError(
+                "Doesn't support this sampling distribution for generating permutations.")
 
         ################## Predict permutations ##################
         all_predictions = self.model(all_permutations_t)
@@ -219,12 +279,17 @@ class ExplainingController_V2:
             all_permutations_t)
         permutations_df = pd.DataFrame(
             reversed_permutations_t.tolist(), columns=self.feature_names)
+        self.permutations_df = permutations_df
         q = np.array(range(number_of_bins+1))/(1.0*number_of_bins)
         cat_df_list = []
         for col in permutations_df.columns.values:
             if col != self.target_name:
-                cat_df_list.append(pd.DataFrame(pd.qcut(
-                    permutations_df[col], q, duplicates='drop', precision=2), columns=[col]))
+                if using_qcut:
+                    cat_df_list.append(pd.DataFrame(pd.qcut(
+                        permutations_df[col], q, duplicates='drop', precision=2), columns=[col]))
+                else:
+                    cat_df_list.append(pd.DataFrame(pd.cut(
+                        permutations_df[col], number_of_bins, duplicates='drop', precision=2), columns=[col]))
             else:
                 cat_df_list.append(pd.DataFrame(
                     permutations_df[col].values, columns=[col]))
@@ -246,12 +311,13 @@ class ExplainingController_V2:
         # if not has_more_than_one_predicted:
         #     raise PermuatationException("All permutation predict same results. Please increase variance or number of samples")
 
-        if len (bn.arcs()) < 1:
+        if len(bn.arcs()) < 1:
             # raise PermuatationException("No relationships found between columns. Please increase variance or number of samples")
             infoBN = ""
         else:
-            infoBN = gnb.getInformation(bn, size=EnviromentParameters.default_graph_size) 
-        
+            infoBN = gnb.getInformation(
+                bn, size=EnviromentParameters.default_graph_size)
+
         # compute Markov Blanket
         markov_blanket = gum.MarkovBlanket(bn, self.target_name)
         markov_blanket_dot = dot.graph_from_dot_data(markov_blanket.toDot())
@@ -261,14 +327,15 @@ class ExplainingController_V2:
         # inference = gnb.getInference(
         #     bn, evs={self.target_name: to_infer}, targets=cat_df.columns.values, size="70")
 
-        has_more_than_one_predicted =  len(cat_df[self.target_name].unique()) > 1
+        has_more_than_one_predicted = len(
+            cat_df[self.target_name].unique()) > 1
         if has_more_than_one_predicted:
             input_evs = {self.target_name: "True"}
-        else: 
-            input_evs= {}
+        else:
+            input_evs = {}
 
         inference = gnb.getInference(
-            bn, evs=input_evs ,targets=cat_df.columns.values, size=EnviromentParameters.default_graph_size)
+            bn, evs=input_evs, targets=cat_df.columns.values, size=EnviromentParameters.default_graph_size)
 
         os.remove(file_path)
         return cat_df, predicted_value.item(), bn, gnb.getBN(bn, size=EnviromentParameters.default_graph_size), inference, infoBN, markov_blanket_html
@@ -285,14 +352,14 @@ class ExplainingController_V2:
         print_big("Loaded model has {%d} parameters" %
                   (self.model.num_all_params()))
 
-    def generate_html_page_from_graphs(self,input, predictedValue, bn, inference, infoBN, markov_blanket):
+    def generate_html_page_from_graphs(self, input, predictedValue, bn, inference, infoBN, markov_blanket):
         outputstring: str = "<h1 style=\"text-align: center\">Model</h1>" \
                             + "<div style=\"text-align: center\">" + self.predicting_parameters.load_model_folder_path + "</div>"\
                             + "<h1 style=\"text-align: center\">Input</h1>" \
                             + "<div style=\"text-align: center\">" + input + "</div>"\
                             + "<h1 style=\"text-align: center\">Predicted</h1>" \
                             + "<div style=\"text-align: center\">" + predictedValue + "</div>"\
-                            +"<h1 style=\"text-align: center\">BN</h1>" \
+                            + "<h1 style=\"text-align: center\">BN</h1>" \
                             + "<div style=\"text-align: center\">" + bn + "</div>"\
                             + ('</br>'*5) + "<h1 style=\"text-align: center\">Inference</h1>" \
                             + inference + ('</br>'*5) + "<h1 style=\"text-align: center\">Info BN</h1>"\
@@ -305,7 +372,7 @@ class ExplainingController_V2:
         path_to_explanation = './Explanations'
         os.makedirs(path_to_explanation, exist_ok=True)
         save_path = os.path.join(
-            path_to_explanation, '%s_%s_graphs_LINDA-BN.html' % (os.path.basename(os.path.normpath(self.predicting_parameters.load_model_folder_path)) , datetime.now()))
+            path_to_explanation, '%s_%s_graphs_LINDA-BN.html' % (os.path.basename(os.path.normpath(self.predicting_parameters.load_model_folder_path)), datetime.now()))
         with open(save_path, 'w')as output_file:
             output_file.write(html_content)
 
